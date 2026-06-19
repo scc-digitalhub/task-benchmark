@@ -17,7 +17,7 @@ from transformers import (
     AutoConfig,
 )
 
-from custom_inference import (
+from .custom_inference import (
     CustomInferenceModel,
     create_custom_model,
 )
