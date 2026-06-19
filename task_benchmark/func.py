@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import csv
+import importlib.util
 import json
 import time
 import psutil
@@ -29,10 +30,30 @@ try:
         create_custom_model,
     )
 except ImportError:
-    from custom_inference import (  # type: ignore[no-redef]
-        CustomInferenceModel,
-        create_custom_model,
-    )
+    try:
+        from custom_inference import (  # type: ignore[no-redef]
+            CustomInferenceModel,
+            create_custom_model,
+        )
+    except ImportError:
+        # Last-resort fallback for runtimes that load this file by path
+        # and don't set package or sibling-module import paths.
+        _custom_path = Path(__file__).resolve().parent / "custom_inference.py"
+        _spec = importlib.util.spec_from_file_location(
+            "task_benchmark_custom_inference",
+            _custom_path,
+        )
+
+        if _spec is None or _spec.loader is None:
+            raise ImportError(
+                f"Could not load custom inference module from {_custom_path}"
+            )
+
+        _module = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_module)
+
+        CustomInferenceModel = _module.CustomInferenceModel
+        create_custom_model = _module.create_custom_model
 
 
 
@@ -353,7 +374,7 @@ def run_task_inference_batch(
 
 
 def run_custom_inference_batch(
-    custom_model: CustomInferenceModel,
+    custom_model: Any,
     batch_bytes: list[bytes],
 ) -> list[list[str]]:
     """
@@ -559,7 +580,7 @@ def evaluate_model(
     label_to_wnid: dict[str, str] = {}
 
     tasks: list[Any] = []
-    custom_model: CustomInferenceModel | None = None
+    custom_model: Any = None
     custom_predicts_wnid = False
 
     if inference_engine == "task-inference":
