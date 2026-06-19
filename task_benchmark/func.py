@@ -2,15 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 import csv
 import json
 import time
 import psutil
 import torch
-
 from pathlib import Path
 from typing import Any
-from __future__ import annotations
 
 
 from digitalhub_runtime_python import handler
