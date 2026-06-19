@@ -2,31 +2,39 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
-
 import csv
 import json
 import time
-from pathlib import Path
-from typing import Any
-
 import psutil
 import torch
+
+from pathlib import Path
+from typing import Any
+from __future__ import annotations
+
+
 from digitalhub_runtime_python import handler
 from transformers import (
     AutoConfig,
 )
-
-from .custom_inference import (
-    CustomInferenceModel,
-    create_custom_model,
-)
-
 from task_inference import create_task
 from task_inference.tasks.vision.image_classification import (
     ImageClassificationInput,
     ImageClassificationOutput,
 )
+
+try:
+    from .custom_inference import (
+        CustomInferenceModel,
+        create_custom_model,
+    )
+except ImportError:
+    from custom_inference import (  # type: ignore[no-redef]
+        CustomInferenceModel,
+        create_custom_model,
+    )
+
+
 
 # ---------------------------------------------------------------------------
 # Constants
