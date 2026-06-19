@@ -7,6 +7,7 @@ from __future__ import annotations
 import csv
 import importlib.util
 import json
+import sys
 import time
 import psutil
 import torch
@@ -50,6 +51,7 @@ except ImportError:
             )
 
         _module = importlib.util.module_from_spec(_spec)
+        sys.modules[_spec.name] = _module
         _spec.loader.exec_module(_module)
 
         CustomInferenceModel = _module.CustomInferenceModel
