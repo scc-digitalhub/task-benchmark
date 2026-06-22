@@ -19,47 +19,43 @@ from digitalhub_runtime_python import handler
 from transformers import (
     AutoConfig,
 )
-# from task_inference import create_task
-# from task_inference.tasks.vision.image_classification import (
-#     ImageClassificationInput,
-#     ImageClassificationOutput,
-# )
-
-from task_benchmark.image_classification.factory import (
-    create_image_classifier,
+from task_inference import create_task
+from task_inference.tasks.vision.image_classification import (
+    ImageClassificationInput,
+    ImageClassificationOutput,
 )
 
-# try:
-#     from .custom_inference import (
-#         CustomInferenceModel,
-#         create_custom_model,
-#     )
-# except ImportError:
-#     try:
-#         from custom_inference import (  # type: ignore[no-redef]
-#             CustomInferenceModel,
-#             create_custom_model,
-#         )
-#     except ImportError:
-#         # Last-resort fallback for runtimes that load this file by path
-#         # and don't set package or sibling-module import paths.
-#         _custom_path = Path(__file__).resolve().parent / "custom_inference.py"
-#         _spec = importlib.util.spec_from_file_location(
-#             "task_benchmark_custom_inference",
-#             _custom_path,
-#         )
+try:
+    from .custom_inference import (
+        CustomInferenceModel,
+        create_custom_model,
+    )
+except ImportError:
+    try:
+        from custom_inference import (  # type: ignore[no-redef]
+            CustomInferenceModel,
+            create_custom_model,
+        )
+    except ImportError:
+        # Last-resort fallback for runtimes that load this file by path
+        # and don't set package or sibling-module import paths.
+        _custom_path = Path(__file__).resolve().parent / "custom_inference.py"
+        _spec = importlib.util.spec_from_file_location(
+            "task_benchmark_custom_inference",
+            _custom_path,
+        )
 
-#         if _spec is None or _spec.loader is None:
-#             raise ImportError(
-#                 f"Could not load custom inference module from {_custom_path}"
-#             )
+        if _spec is None or _spec.loader is None:
+            raise ImportError(
+                f"Could not load custom inference module from {_custom_path}"
+            )
 
-#         _module = importlib.util.module_from_spec(_spec)
-#         sys.modules[_spec.name] = _module
-#         _spec.loader.exec_module(_module)
+        _module = importlib.util.module_from_spec(_spec)
+        sys.modules[_spec.name] = _module
+        _spec.loader.exec_module(_module)
 
-#         CustomInferenceModel = _module.CustomInferenceModel
-#         create_custom_model = _module.create_custom_model
+        CustomInferenceModel = _module.CustomInferenceModel
+        create_custom_model = _module.create_custom_model
 
 
 
@@ -273,131 +269,131 @@ def is_cuda_device(
     )
 
 
-# def build_task_inference_tasks(
-#     model_name: str,
-#     device: str,
-#     cuda_enabled: bool,
-# ) -> tuple[list[Any], str]:
-#     """
-#     Create task-inference task(s) with explicit
-#     device-based conditioning.
-#     """
+def build_task_inference_tasks(
+    model_name: str,
+    device: str,
+    cuda_enabled: bool,
+) -> tuple[list[Any], str]:
+    """
+    Create task-inference task(s) with explicit
+    device-based conditioning.
+    """
 
-#     if not cuda_enabled:
+    if not cuda_enabled:
 
-#         task = create_task(
-#             backend="transformers",
-#             task_name="image-classification",
-#             model_name=model_name,
-#             model_params={"device": device},
-#         )
+        task = create_task(
+            backend="transformers",
+            task_name="image-classification",
+            model_name=model_name,
+            model_params={"device": device},
+        )
 
-#         return [task], "single-device"
+        return [task], "single-device"
 
-#     if device.startswith("cuda:"):
+    if device.startswith("cuda:"):
 
-#         task = create_task(
-#             backend="transformers",
-#             task_name="image-classification",
-#             model_name=model_name,
-#             model_params={"device": device},
-#         )
+        task = create_task(
+            backend="transformers",
+            task_name="image-classification",
+            model_name=model_name,
+            model_params={"device": device},
+        )
 
-#         return [task], "single-device"
+        return [task], "single-device"
 
-#     gpu_count = torch.cuda.device_count()
+    gpu_count = torch.cuda.device_count()
 
-#     if gpu_count > 1:
+    if gpu_count > 1:
 
-#         device_ids = list(range(gpu_count))
-#         tasks = []
+        device_ids = list(range(gpu_count))
+        tasks = []
 
-#         for i in device_ids:
+        for i in device_ids:
 
-#             task = create_task(
-#                 backend="transformers",
-#                 task_name="image-classification",
-#                 model_name=model_name,
-#                 model_params={
-#                     "device": f"cuda:{i}"
-#                 },
-#             )
+            task = create_task(
+                backend="transformers",
+                task_name="image-classification",
+                model_name=model_name,
+                model_params={
+                    "device": f"cuda:{i}"
+                },
+            )
 
-#             tasks.append(task)
+            tasks.append(task)
 
-#         print(
-#             "Using per-device task list "
-#             f"across {len(tasks)} GPUs"
-#         )
+        print(
+            "Using per-device task list "
+            f"across {len(tasks)} GPUs"
+        )
 
-#         return tasks, "round-robin-multi-device"
+        return tasks, "round-robin-multi-device"
 
-#     task = create_task(
-#         backend="transformers",
-#         task_name="image-classification",
-#         model_name=model_name,
-#         model_params={"device": "cuda"},
-#     )
+    task = create_task(
+        backend="transformers",
+        task_name="image-classification",
+        model_name=model_name,
+        model_params={"device": "cuda"},
+    )
 
-#     return [task], "single-device"
-
-
-# def run_task_inference_batch(
-#     tasks: list[Any],
-#     batches_evaluated: int,
-#     batch_bytes: list[bytes],
-#     cuda_enabled: bool,
-# ) -> list[list[str]]:
-#     """
-#     Run one batch using task-inference and return predicted labels.
-#     """
-
-#     task = tasks[
-#         batches_evaluated % len(tasks)
-#     ]
-
-#     inp = ImageClassificationInput(
-#         images=batch_bytes,
-#         top_k=5,
-#     )
-
-#     resp = task(
-#         inp.to_inference_request()
-#     )
-
-#     result = (
-#         ImageClassificationOutput
-#         .from_inference_response(resp)
-#     )
-
-#     if cuda_enabled:
-#         torch.cuda.synchronize()
-
-#     return [
-#         [p.label for p in per_image]
-#         for per_image in result.results
-#     ]
+    return [task], "single-device"
 
 
-# def run_custom_inference_batch(
-#     custom_model: Any,
-#     batch_bytes: list[bytes],
-# ) -> list[list[str]]:
-#     """
-#     Run one batch using a custom backend and return predicted labels.
-#     """
+def run_task_inference_batch(
+    tasks: list[Any],
+    batches_evaluated: int,
+    batch_bytes: list[bytes],
+    cuda_enabled: bool,
+) -> list[list[str]]:
+    """
+    Run one batch using task-inference and return predicted labels.
+    """
 
-#     custom_predictions = (
-#         custom_model.predict_batch(
-#             images=batch_bytes,
-#             top_k=5,
-#         )
-#     )
+    task = tasks[
+        batches_evaluated % len(tasks)
+    ]
 
-#     return [
-#         [p.label for p in per_image]
-#         for per_image in custom_predictions
-#     ]
+    inp = ImageClassificationInput(
+        images=batch_bytes,
+        top_k=5,
+    )
+
+    resp = task(
+        inp.to_inference_request()
+    )
+
+    result = (
+        ImageClassificationOutput
+        .from_inference_response(resp)
+    )
+
+    if cuda_enabled:
+        torch.cuda.synchronize()
+
+    return [
+        [p.label for p in per_image]
+        for per_image in result.results
+    ]
+
+
+def run_custom_inference_batch(
+    custom_model: Any,
+    batch_bytes: list[bytes],
+) -> list[list[str]]:
+    """
+    Run one batch using a custom backend and return predicted labels.
+    """
+
+    custom_predictions = (
+        custom_model.predict_batch(
+            images=batch_bytes,
+            top_k=5,
+        )
+    )
+
+    return [
+        [p.label for p in per_image]
+        for per_image in custom_predictions
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -583,14 +579,17 @@ def evaluate_model(
                 "",
             )
 
-    # label_to_wnid: dict[str, str] = {}
-
-    # tasks: list[Any] = []
-    # custom_model: Any = None
-    # custom_predicts_wnid = False
     label_to_wnid: dict[str, str] = {}
 
+    tasks: list[Any] = []
+    custom_model: Any = None
+    custom_predicts_wnid = False
+
     if inference_engine == "task-inference":
+
+        # -------------------------------------------------------------------
+        # Load config
+        # -------------------------------------------------------------------
 
         print(
             f"Loading model config: "
@@ -628,112 +627,52 @@ def evaluate_model(
             f"labels."
         )
 
-    classifier = create_image_classifier(
-        inference_engine=inference_engine,
-        model_name=model_name,
-        custom_model_name=custom_model_name,
-        class_descriptions=class_descriptions,
-        device=device,
-    )
+    # -----------------------------------------------------------------------
+    # Create inference task(s)
+    # -----------------------------------------------------------------------
 
-    custom_predicts_wnid = (
-        classifier.predicts_wnid
-    )
+    if inference_engine == "task-inference":
 
-    task_mode = getattr(
-        classifier,
-        "task_mode",
-        inference_engine,
-    )
+        print(
+            f"Initializing inference task "
+            f"on device={device}"
+        )
 
-    # if inference_engine == "task-inference":
+        tasks, task_mode = (
+            build_task_inference_tasks(
+                model_name=model_name,
+                device=device,
+                cuda_enabled=cuda_enabled,
+            )
+        )
 
-    #     # -------------------------------------------------------------------
-    #     # Load config
-    #     # -------------------------------------------------------------------
+    elif inference_engine == "custom":
 
-    #     print(
-    #         f"Loading model config: "
-    #         f"{model_name}"
-    #     )
+        print(
+            "Initializing custom model "
+            f"'{custom_model_name}' "
+            f"on device={device}"
+        )
 
-    #     config = (
-    #         AutoConfig
-    #         .from_pretrained(
-    #             model_name
-    #         )
-    #     )
+        custom_model = create_custom_model(
+            custom_model_name=custom_model_name,
+            class_descriptions=class_descriptions,
+            device=device,
+        )
 
-    #     id2label = {
-    #         int(k): v
-    #         for k, v in (
-    #             config.id2label.items()
-    #         )
-    #     }
+        custom_predicts_wnid = (
+            custom_model.predicts_wnid
+        )
 
-    #     print(
-    #         "Building label mapping..."
-    #     )
+        task_mode = "custom"
 
-    #     label_to_wnid = (
-    #         build_label_to_wnid(
-    #             class_descriptions,
-    #             id2label,
-    #         )
-    #     )
+    else:
 
-    #     print(
-    #         f"Mapped "
-    #         f"{len(label_to_wnid)} "
-    #         f"labels."
-    #     )
-
-    # # -----------------------------------------------------------------------
-    # # Create inference task(s)
-    # # -----------------------------------------------------------------------
-
-    # if inference_engine == "task-inference":
-
-    #     print(
-    #         f"Initializing inference task "
-    #         f"on device={device}"
-    #     )
-
-    #     tasks, task_mode = (
-    #         build_task_inference_tasks(
-    #             model_name=model_name,
-    #             device=device,
-    #             cuda_enabled=cuda_enabled,
-    #         )
-    #     )
-
-    # elif inference_engine == "custom":
-
-    #     print(
-    #         "Initializing custom model "
-    #         f"'{custom_model_name}' "
-    #         f"on device={device}"
-    #     )
-
-    #     custom_model = create_custom_model(
-    #         custom_model_name=custom_model_name,
-    #         class_descriptions=class_descriptions,
-    #         device=device,
-    #     )
-
-    #     custom_predicts_wnid = (
-    #         custom_model.predicts_wnid
-    #     )
-
-    #     task_mode = "custom"
-
-    # else:
-
-    #     raise ValueError(
-    #         "Invalid inference_engine "
-    #         f"'{inference_engine}'. "
-    #         "Use 'task-inference' or 'custom'."
-    #     )
+        raise ValueError(
+            "Invalid inference_engine "
+            f"'{inference_engine}'. "
+            "Use 'task-inference' or 'custom'."
+        )
 
     # -----------------------------------------------------------------------
     # Metrics
@@ -831,47 +770,33 @@ def evaluate_model(
         # Inference
         # -------------------------------------------------------------------
 
-        # try:
-        #     if inference_engine == "task-inference":
-
-        #         prediction_labels = (
-        #             run_task_inference_batch(
-        #                 tasks=tasks,
-        #                 batches_evaluated=batches_evaluated,
-        #                 batch_bytes=batch_bytes,
-        #                 cuda_enabled=cuda_enabled,
-        #             )
-        #         )
-
-        #     else:
-
-        #         if custom_model is None:
-
-        #             raise RuntimeError(
-        #                 "Custom model was not initialized."
-        #             )
-
-        #         prediction_labels = (
-        #             run_custom_inference_batch(
-        #                 custom_model=custom_model,
-        #                 batch_bytes=batch_bytes,
-        #             )
-        #         )
         try:
-            predictions = (
-                classifier.predict_batch(
-                    images=batch_bytes,
-                    top_k=5,
-                )
-            )
+            if inference_engine == "task-inference":
 
-            prediction_labels = [
-                [
-                    prediction.label
-                    for prediction in per_image
-                ]
-                for per_image in predictions
-            ]
+                prediction_labels = (
+                    run_task_inference_batch(
+                        tasks=tasks,
+                        batches_evaluated=batches_evaluated,
+                        batch_bytes=batch_bytes,
+                        cuda_enabled=cuda_enabled,
+                    )
+                )
+
+            else:
+
+                if custom_model is None:
+
+                    raise RuntimeError(
+                        "Custom model was not initialized."
+                    )
+
+                prediction_labels = (
+                    run_custom_inference_batch(
+                        custom_model=custom_model,
+                        batch_bytes=batch_bytes,
+                    )
+                )
+
         except Exception as e:
             print(
                 f"Inference failed "
@@ -910,8 +835,7 @@ def evaluate_model(
             batch_wnids,
         ):
 
-            # if inference_engine == "task-inference":
-            if not custom_predicts_wnid:
+            if inference_engine == "task-inference":
 
                 pred_wnids = [
                     label_to_wnid.get(
@@ -920,18 +844,16 @@ def evaluate_model(
                     for pred_label in pred_labels
                 ]
 
-            # elif custom_predicts_wnid:
+            elif custom_predicts_wnid:
 
-            #     pred_wnids = pred_labels
-
-            # else:
-
-            #     pred_wnids = [
-            #         None
-            #         for _ in pred_labels
-            #     ]
-            else:
                 pred_wnids = pred_labels
+
+            else:
+
+                pred_wnids = [
+                    None
+                    for _ in pred_labels
+                ]
 
             if (
                 pred_wnids
@@ -1080,11 +1002,11 @@ def evaluate_model(
             device,
         "task_mode":
             task_mode,
-        "task_count": getattr(
-            classifier,
-            "task_count",
-            1,
-            ),
+        "task_count":
+            len(tasks)
+            if inference_engine
+            == "task-inference"
+            else 1,
         "inference_engine":
             inference_engine,
         "custom_model_name":
