@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "task-benchmark"
+version = "0.1.0"
+description = "Image classification benchmark function for Digital Hub"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "DSLab - Fondazione Bruno Kessler" }]
+dependencies = [
+	"digitalhub-runtime-python",
+	"psutil",
+	"task-inference",
+	"torch",
+	"transformers",
+]
+
+[tool.setuptools]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["task_benchmark*"]
