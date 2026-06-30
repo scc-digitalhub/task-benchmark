@@ -1,15 +1,19 @@
-from task_inference import create_task
+# SPDX-FileCopyrightText: © 2026 DSLab - Fondazione Bruno Kessler
+#
+# SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
+import torch
+from task_inference import create_task
 from task_inference.tasks.vision.image_classification import (
     ImageClassificationInput,
     ImageClassificationOutput,
 )
 
-import torch
-
 from .models import (
-    Prediction,
     ImageClassificationModel,
+    Prediction,
 )
 
 
@@ -26,10 +30,7 @@ class TaskInferenceImageClassifier(
     ):
         self.tasks = []
 
-        # CPU
-
         if not device.startswith("cuda"):
-
             self.tasks.append(
                 create_task(
                     backend="transformers",
@@ -40,13 +41,9 @@ class TaskInferenceImageClassifier(
                     },
                 )
             )
-
             return
-
-        # Explicit GPU
 
         if device.startswith("cuda:"):
-
             self.tasks.append(
                 create_task(
                     backend="transformers",
@@ -57,17 +54,11 @@ class TaskInferenceImageClassifier(
                     },
                 )
             )
-
             return
 
-        # device == "cuda"
-
-        gpu_count = (
-            torch.cuda.device_count()
-        )
+        gpu_count = torch.cuda.device_count()
 
         if gpu_count <= 1:
-
             self.tasks.append(
                 create_task(
                     backend="transformers",
@@ -78,17 +69,13 @@ class TaskInferenceImageClassifier(
                     },
                 )
             )
-
             return
 
         print(
-            f"Using {gpu_count} GPUs "
-            "with round-robin scheduling"
+            f"Using {gpu_count} GPUs with round-robin scheduling"
         )
 
-        for gpu_id in range(
-            gpu_count
-        ):
+        for gpu_id in range(gpu_count):
             self.tasks.append(
                 create_task(
                     backend="transformers",
@@ -107,34 +94,25 @@ class TaskInferenceImageClassifier(
         self,
     ) -> int:
 
-        return len(
-            self.tasks
-        )
+        return len(self.tasks)
 
     def predict_batch(
         self,
-        images: list[bytes],
+        inputs: list[bytes],
         top_k: int = 5,
     ) -> list[list[Prediction]]:
 
         if len(self.tasks) == 1:
-
             task = self.tasks[0]
-
         else:
-
             task = self.tasks[
-                self.batch_counter
-                % len(self.tasks)
+                self.batch_counter % len(self.tasks)
             ]
-
             self.batch_counter += 1
 
-        inp = (
-            ImageClassificationInput(
-                images=images,
-                top_k=top_k,
-            )
+        inp = ImageClassificationInput(
+            images=inputs,
+            top_k=top_k,
         )
 
         response = task(
@@ -143,13 +121,10 @@ class TaskInferenceImageClassifier(
 
         output = (
             ImageClassificationOutput
-            .from_inference_response(
-                response
-            )
+            .from_inference_response(response)
         )
 
         if torch.cuda.is_available():
-
             torch.cuda.synchronize()
 
         return [
@@ -160,7 +135,5 @@ class TaskInferenceImageClassifier(
                 )
                 for p in per_image
             ]
-            for per_image
-            in output.results
+            for per_image in output.results
         ]
-

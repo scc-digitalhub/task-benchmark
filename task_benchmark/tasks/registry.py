@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: © 2026 DSLab - Fondazione Bruno Kessler
+#
+# SPDX-License-Identifier: Apache-2.0
+
+from __future__ import annotations
+
+from task_benchmark.abstract import BaseTask
+
+from .image_classification.task import ImageClassificationTask
+
+
+_TASKS: dict[str, type[BaseTask]] = {
+    "image-classification": ImageClassificationTask,
+}
+
+
+def create_task_handler(
+    task_name: str,
+) -> BaseTask:
+    task_cls = _TASKS.get(task_name)
+
+    if task_cls is None:
+        available = ", ".join(sorted(_TASKS))
+        raise ValueError(
+            f"Unsupported task '{task_name}'. Available tasks: {available}."
+        )
+
+    return task_cls()

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2026 DSLab - Fondazione Bruno Kessler
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import importlib
@@ -59,7 +63,7 @@ def _load_custom_model_module(
     Load custom model module.
 
     Supported values for custom_model_name:
-    - Local key: "hash-baseline" -> image_classification/custom_models/hash_baseline.py
+    - Local key: "hash-baseline" -> custom_models/hash_baseline.py
     - External module path: "my_package.my_model"
     """
 
@@ -123,10 +127,6 @@ def create_custom_model(
 
     Custom modules must expose a callable named
     `create_model(class_descriptions, device)`.
-
-    `custom_model_name` can be:
-    - local key (e.g. "hash-baseline") from image_classification/custom_models
-    - external installed module path (e.g. "my_package.my_model")
     """
 
     module, source_text = _load_custom_model_module(
