@@ -163,6 +163,7 @@ class BaseTask(ABC):
         implementation_name: str,
         model_name: str,
         custom_model_name: str,
+        custom_model_import_path: str,
         class_descriptions: dict[str, str],
         device: str,
     ) -> BaseImplementation:

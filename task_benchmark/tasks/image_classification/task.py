@@ -166,6 +166,7 @@ class ImageClassificationTask(BaseTask):
         implementation_name: str,
         model_name: str,
         custom_model_name: str,
+        custom_model_import_path: str,
         class_descriptions: dict[str, str],
         device: str,
     ) -> BaseImplementation:
@@ -173,6 +174,7 @@ class ImageClassificationTask(BaseTask):
             implementation_name=implementation_name,
             model_name=model_name,
             custom_model_name=custom_model_name,
+            custom_model_import_path=custom_model_import_path,
             class_descriptions=class_descriptions,
             device=device,
         )

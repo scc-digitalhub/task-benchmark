@@ -10,6 +10,7 @@ def create_image_classifier(
     implementation_name: str,
     model_name: str,
     custom_model_name: str,
+    custom_model_import_path: str,
     class_descriptions: dict[str, str],
     device: str,
 ):
@@ -22,6 +23,7 @@ def create_image_classifier(
     if implementation_name == "custom":
         return create_custom_model(
             custom_model_name=custom_model_name,
+            custom_model_import_path=custom_model_import_path,
             class_descriptions=class_descriptions,
             device=device,
         )

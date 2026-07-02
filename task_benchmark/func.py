@@ -49,6 +49,7 @@ def evaluate_model(
     custom_model_name: str = (
         "hash-baseline"
     ),
+    custom_model_import_path: str = "",
 ):
     """
     Evaluate a model by flowing through 3 levels:
@@ -203,6 +204,7 @@ def evaluate_model(
         implementation_name=selected_implementation,
         model_name=model_name,
         custom_model_name=custom_model_name,
+        custom_model_import_path=custom_model_import_path,
         class_descriptions=class_descriptions,
         device=device,
     )
@@ -217,6 +219,12 @@ def evaluate_model(
             f"Custom model key/module: "
             f"{custom_model_name}"
         )
+
+        if custom_model_import_path:
+            print(
+                "Custom model import path:",
+                custom_model_import_path,
+            )
 
         print(
             "Custom model loaded from:",

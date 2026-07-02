@@ -56,25 +56,28 @@ def list_custom_models() -> list[str]:
     return _available_model_names()
 
 
-def _load_custom_model_module(
+def _load_custom_model_reference(
     custom_model_name: str,
+    custom_model_import_path: str = "",
 ) -> tuple[ModuleType, str]:
     """
     Load custom model module.
 
-    Supported values for custom_model_name:
-    - Local key: "hash-baseline" -> custom_models/hash_baseline.py
-    - External module path: "my_package.my_model"
+    Supported values:
+    - Explicit module path via custom_model_import_path (recommended for aliases)
+    - Local key in custom_model_name: "hash-baseline" -> custom_models/hash_baseline.py
     """
 
-    if "." in custom_model_name:
+    if custom_model_import_path:
         module = importlib.import_module(
-            custom_model_name
+            custom_model_import_path
         )
 
         return (
             module,
-            f"external module '{custom_model_name}'",
+            "external module "
+            f"'{custom_model_import_path}' "
+            f"(alias '{custom_model_name}')",
         )
 
     module_name = _normalize_module_name(
@@ -111,14 +114,16 @@ def _load_custom_model_module(
         raise ValueError(
             "Unknown custom model "
             f"'{custom_model_name}'. "
-            "Use a local model key (from custom_models) or an installed "
-            "external Python module path (e.g. 'my_package.my_model'). "
+            "Use a local model key (from custom_models) or set "
+            "custom_model_import_path to an installed Python module "
+            "(e.g. 'my_package.my_model'). "
             f"Available local models: {available_text}."
         ) from exc
 
 
 def create_custom_model(
     custom_model_name: str,
+    custom_model_import_path: str,
     class_descriptions: dict[str, str],
     device: str,
 ) -> ImageClassificationModel:
@@ -129,8 +134,9 @@ def create_custom_model(
     `create_model(class_descriptions, device)`.
     """
 
-    module, source_text = _load_custom_model_module(
-        custom_model_name
+    module, source_text = _load_custom_model_reference(
+        custom_model_name=custom_model_name,
+        custom_model_import_path=custom_model_import_path,
     )
 
     create_model = getattr(
