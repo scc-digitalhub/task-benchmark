@@ -114,16 +114,39 @@ class BaseTask(ABC):
 
         return {}
 
-    def update_task_metrics(
+    def execute_batch(
+        self,
+        implementation: BaseImplementation,
+        batch_inputs: list[bytes],
+    ) -> Any:
+        """
+        Execute one batch for this task and return task-specific batch output.
+        """
+
+        return None
+
+    def record_skipped_items(
         self,
         task_metrics: dict[str, Any],
-        pred_labels: list[str],
-        gt_label: str,
-        predicts_task_labels: bool,
-        label_mapping: dict[str, str],
+        count: int = 1,
     ) -> None:
         """
-        Update task-specific metrics for one evaluated input.
+        Record skipped task items for task-specific reporting.
+        """
+
+        _ = task_metrics
+        _ = count
+
+    def update_task_metrics_from_batch(
+        self,
+        task_metrics: dict[str, Any],
+        batch_output: Any,
+        batch_gt_labels: list[str],
+        label_mapping: dict[str, str],
+        implementation: BaseImplementation,
+    ) -> None:
+        """
+        Update task-specific metrics from one task-specific batch output.
         """
 
     def finalize_task_metrics(

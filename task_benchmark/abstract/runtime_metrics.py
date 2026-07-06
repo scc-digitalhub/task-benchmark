@@ -219,3 +219,21 @@ class RuntimeMetricsCollector:
                 self.batch_memory_values
             ),
         }
+
+    @staticmethod
+    def build_summary_lines(
+        report: dict[str, Any],
+    ) -> list[str]:
+        lines = [
+            f"Wall time (s): {float(report['wall_time_seconds']):.2f}",
+            f"CPU time (s): {float(report['cpu_time_seconds']):.2f}",
+            f"Peak memory (MB): {float(report['peak_memory_mb']):.2f}",
+        ]
+
+        if report.get("cuda_enabled"):
+            lines.append(
+                "Peak GPU allocated (MB): "
+                f"{report['peak_gpu_allocated_mb']:.2f}"
+            )
+
+        return lines

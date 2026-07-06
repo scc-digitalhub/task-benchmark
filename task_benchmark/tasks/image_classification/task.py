@@ -70,36 +70,72 @@ class ImageClassificationTask(BaseTask):
         return {
             "top1_correct": 0,
             "top5_correct": 0,
+            "skipped": 0,
             "total": 0,
         }
 
-    def update_task_metrics(
+    def record_skipped_items(
         self,
         task_metrics: dict[str, int],
-        pred_labels: list[str],
-        gt_label: str,
-        predicts_task_labels: bool,
-        label_mapping: dict[str, str],
+        count: int = 1,
     ) -> None:
-        if not predicts_task_labels:
-            pred_task_labels = [
-                label_mapping.get(pred_label)
-                for pred_label in pred_labels
+        task_metrics["skipped"] += count
+
+    def execute_batch(
+        self,
+        implementation: BaseImplementation,
+        batch_inputs: list[bytes],
+    ) -> list[list[str]]:
+        predictions = implementation.predict_batch(
+            batch_inputs,
+            top_k=5,
+        )
+
+        return [
+            [
+                prediction.label
+                for prediction in per_image
             ]
-        else:
-            pred_task_labels = pred_labels
+            for per_image in predictions
+        ]
 
-        if (
-            pred_task_labels
-            and pred_task_labels[0]
-            == gt_label
+    def update_task_metrics_from_batch(
+        self,
+        task_metrics: dict[str, int],
+        batch_output: list[list[str]],
+        batch_gt_labels: list[str],
+        label_mapping: dict[str, str],
+        implementation: BaseImplementation,
+    ) -> None:
+        predicts_task_labels = getattr(
+            implementation,
+            "predicts_wnid",
+            False,
+        )
+
+        for pred_labels, gt_label in zip(
+            batch_output,
+            batch_gt_labels,
         ):
-            task_metrics["top1_correct"] += 1
+            if not predicts_task_labels:
+                pred_task_labels = [
+                    label_mapping.get(pred_label)
+                    for pred_label in pred_labels
+                ]
+            else:
+                pred_task_labels = pred_labels
 
-        if gt_label in pred_task_labels[:5]:
-            task_metrics["top5_correct"] += 1
+            if (
+                pred_task_labels
+                and pred_task_labels[0]
+                == gt_label
+            ):
+                task_metrics["top1_correct"] += 1
 
-        task_metrics["total"] += 1
+            if gt_label in pred_task_labels[:5]:
+                task_metrics["top5_correct"] += 1
+
+            task_metrics["total"] += 1
 
     def finalize_task_metrics(
         self,
@@ -116,6 +152,7 @@ class ImageClassificationTask(BaseTask):
             "top1_accuracy": task_metrics["top1_correct"] / total,
             "top5_accuracy": task_metrics["top5_correct"] / total,
             "dataset_images_evaluated": total,
+            "dataset_images_skipped": task_metrics["skipped"],
         }
 
     def build_task_summary_lines(
@@ -124,6 +161,7 @@ class ImageClassificationTask(BaseTask):
     ) -> list[str]:
         return [
             f"Images evaluated: {report['dataset_images_evaluated']}",
+            f"Images skipped: {report['dataset_images_skipped']}",
             f"Top-1 accuracy: {report['top1_accuracy']:.4f}",
             f"Top-5 accuracy: {report['top5_accuracy']:.4f}",
         ]
