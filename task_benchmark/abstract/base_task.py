@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .base_implementation import BaseImplementation
+from .runtime_metrics import RuntimeMetricsCollector
 
 
 class BaseTask(ABC):
@@ -192,4 +193,29 @@ class BaseTask(ABC):
     ) -> BaseImplementation:
         """
         Create the concrete implementation for this task.
+        """
+
+    @abstractmethod
+    def execute_evaluation(
+        self,
+        dataset_path: Path,
+        implementation_name: str,
+        device: str,
+        runtime_metrics: RuntimeMetricsCollector,
+        **kwargs,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Execute full task evaluation.
+
+        This method handles all task-specific orchestration:
+        - Load dataset rows
+        - Prepare implementation
+        - Iterate batches
+        - Execute inference
+        - Track metrics
+
+        Returns:
+            (task_metrics, task_report) tuple.
+            task_metrics: raw metric state dict
+            task_report: finalized report fields dict
         """

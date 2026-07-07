@@ -4,10 +4,10 @@
 
 """task-benchmark package."""
 
-from .core import evaluate_model_paths
+from .core import evaluate
 from .digitalhub import evaluate_model
 
 __all__ = [
+	"evaluate",
 	"evaluate_model",
-	"evaluate_model_paths",
 ]

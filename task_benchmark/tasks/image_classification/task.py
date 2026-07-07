@@ -4,11 +4,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
 from transformers import AutoConfig
 
 from task_benchmark.abstract import (
     BaseImplementation,
     BaseTask,
+    RuntimeMetricsCollector,
 )
 
 from .implementations.factory import create_image_classifier
@@ -216,3 +220,122 @@ class ImageClassificationTask(BaseTask):
             class_descriptions=class_descriptions,
             device=device,
         )
+
+    def execute_evaluation(
+        self,
+        dataset_path: Path,
+        implementation_name: str,
+        device: str,
+        runtime_metrics: RuntimeMetricsCollector,
+        **kwargs,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Execute full image classification evaluation.
+
+        Orchestrates batch iteration, inference, and metrics collection.
+        Delegates to task-specific helper methods for each stage.
+        """
+
+        dataset_path = Path(dataset_path)
+
+        # Extract task-specific parameters from kwargs
+        task_inputs_dir_path = Path(kwargs.get("task_inputs_dir_path", "."))
+        model_name = kwargs.get("model_name", "")
+        batch_size = kwargs.get("batch_size", 8)
+        custom_model_name = kwargs.get("custom_model_name", "hash-baseline")
+        custom_model_import_path = kwargs.get("custom_model_import_path", "")
+
+        # Load dataset
+        rows = self.load_dataset_rows(dataset_path)
+        print(f"Loaded {len(rows)} dataset rows.")
+
+        # Extract class descriptions
+        class_descriptions = self.extract_class_descriptions(rows=rows)
+
+        # Build label mapping (task-specific)
+        label_mapping = self.build_label_mapping(
+            implementation_name=implementation_name,
+            model_name=model_name,
+            class_descriptions=class_descriptions,
+        )
+
+        # Create implementation
+        classifier = self.create_implementation(
+            implementation_name=implementation_name,
+            model_name=model_name,
+            custom_model_name=custom_model_name,
+            custom_model_import_path=custom_model_import_path,
+            class_descriptions=class_descriptions,
+            device=device,
+        )
+
+        # Initialize task metrics
+        task_metrics = self.create_task_metrics()
+
+        # Orchestrate batch iteration
+        for batch_start in range(0, len(rows), batch_size):
+            batch_wall_start, batch_cpu_start = runtime_metrics.start_batch()
+
+            batch_rows = rows[batch_start : batch_start + batch_size]
+
+            batch_inputs: list[bytes] = []
+            batch_gt_labels: list[str] = []
+
+            # Load batch inputs from disk
+            for row in batch_rows:
+                input_path = self.resolve_input_path(
+                    row[self.input_column],
+                    task_inputs_dir_path,
+                )
+
+                gt_label = self.get_ground_truth(row)
+
+                if not input_path.is_file():
+                    print(f"[WARNING] Missing input file: {input_path}")
+                    self.record_skipped_items(task_metrics=task_metrics)
+                    continue
+
+                try:
+                    batch_inputs.append(input_path.read_bytes())
+                    batch_gt_labels.append(gt_label)
+                except Exception as exc:
+                    print(f"Failed reading input file: {input_path}")
+                    print(exc)
+                    self.record_skipped_items(task_metrics=task_metrics)
+
+            if not batch_inputs:
+                continue
+
+            # Execute batch inference
+            try:
+                batch_output = self.execute_batch(
+                    implementation=classifier,
+                    batch_inputs=batch_inputs,
+                )
+            except Exception as exc:
+                print(f"Task execution failed for batch {batch_start}")
+                print(exc)
+                self.record_skipped_items(
+                    task_metrics=task_metrics,
+                    count=len(batch_inputs),
+                )
+                continue
+
+            # Update task metrics from batch
+            self.update_task_metrics_from_batch(
+                task_metrics=task_metrics,
+                batch_output=batch_output,
+                batch_gt_labels=batch_gt_labels,
+                label_mapping=label_mapping,
+                implementation=classifier,
+            )
+
+            runtime_metrics.finish_batch(
+                batch_wall_start=batch_wall_start,
+                batch_cpu_start=batch_cpu_start,
+            )
+
+        # Finalize and return metrics
+        task_report = self.finalize_task_metrics(task_metrics=task_metrics)
+
+        return task_metrics, task_report
