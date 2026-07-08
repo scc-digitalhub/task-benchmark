@@ -68,6 +68,30 @@ class ImageClassificationTask(BaseTask):
     label_column = "wnid"
     description_column = "class_description"
 
+    @property
+    def required_columns(self) -> set[str]:
+        return {
+            self.input_column,
+            self.label_column,
+            self.description_column,
+        }
+
+    def _extract_class_descriptions(
+        self,
+        rows: list[dict[str, str]],
+    ) -> dict[str, str]:
+        class_descriptions: dict[str, str] = {}
+
+        for row in rows:
+            class_id = row[self.label_column]
+            if class_id not in class_descriptions:
+                class_descriptions[class_id] = row.get(
+                    self.description_column,
+                    "",
+                )
+
+        return class_descriptions
+
     def create_task_metrics(
         self,
     ) -> dict[str, int]:
@@ -170,7 +194,7 @@ class ImageClassificationTask(BaseTask):
             f"Top-5 accuracy: {report['top5_accuracy']:.4f}",
         ]
 
-    def build_label_mapping(
+    def _build_label_mapping(
         self,
         implementation_name: str,
         model_name: str,
@@ -203,7 +227,7 @@ class ImageClassificationTask(BaseTask):
 
         return mapping
 
-    def create_implementation(
+    def _create_implementation(
         self,
         implementation_name: str,
         model_name: str,
@@ -250,17 +274,17 @@ class ImageClassificationTask(BaseTask):
         print(f"Loaded {len(rows)} dataset rows.")
 
         # Extract class descriptions
-        class_descriptions = self.extract_class_descriptions(rows=rows)
+        class_descriptions = self._extract_class_descriptions(rows=rows)
 
         # Build label mapping (task-specific)
-        label_mapping = self.build_label_mapping(
+        label_mapping = self._build_label_mapping(
             implementation_name=implementation_name,
             model_name=model_name,
             class_descriptions=class_descriptions,
         )
 
         # Create implementation
-        classifier = self.create_implementation(
+        classifier = self._create_implementation(
             implementation_name=implementation_name,
             model_name=model_name,
             custom_model_name=custom_model_name,

@@ -5,9 +5,14 @@
 """task-benchmark package."""
 
 from .core import evaluate
-from .digitalhub import evaluate_model
 
 __all__ = [
 	"evaluate",
-	"evaluate_model",
 ]
+
+try:
+	from .digitalhub import evaluate_model
+except ModuleNotFoundError:
+	pass
+else:
+	__all__.append("evaluate_model")

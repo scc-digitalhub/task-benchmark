@@ -89,13 +89,6 @@ class TaskInferenceImageClassifier(
 
         self.batch_counter = 0
 
-    @property
-    def task_count(
-        self,
-    ) -> int:
-
-        return len(self.tasks)
-
     def predict_batch(
         self,
         inputs: list[bytes],

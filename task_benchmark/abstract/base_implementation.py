@@ -10,7 +10,4 @@ from abc import ABC
 class BaseImplementation(ABC):
     """
     Generic implementation abstraction used across tasks.
-
     """
-
-    predicts_wnid: bool = False

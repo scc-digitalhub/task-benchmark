@@ -43,15 +43,6 @@ class RuntimeMetricsCollector:
             / (1024 * 1024)
         )
 
-    @staticmethod
-    def is_cuda_device(
-        device: str,
-    ) -> bool:
-        return (
-            device == "cuda"
-            or device.startswith("cuda:")
-        )
-
     def start(
         self,
     ) -> None:

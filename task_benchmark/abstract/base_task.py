@@ -9,7 +9,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from .base_implementation import BaseImplementation
 from .runtime_metrics import RuntimeMetricsCollector
 
 
@@ -21,14 +20,12 @@ class BaseTask(ABC):
     task_name: str
     input_column: str
     label_column: str
-    description_column: str
 
     @property
     def required_columns(self) -> set[str]:
         return {
             self.input_column,
             self.label_column,
-            self.description_column,
         }
 
     def load_dataset_rows(
@@ -84,115 +81,19 @@ class BaseTask(ABC):
 
         return raw_path
 
-    def extract_class_descriptions(
-        self,
-        rows: list[dict[str, str]],
-    ) -> dict[str, str]:
-        class_descriptions: dict[str, str] = {}
-
-        for row in rows:
-            class_id = row[self.label_column]
-            if class_id not in class_descriptions:
-                class_descriptions[class_id] = row.get(
-                    self.description_column,
-                    "",
-                )
-
-        return class_descriptions
-
     def get_ground_truth(
         self,
         row: dict[str, str],
     ) -> str:
         return row[self.label_column]
 
-    def create_task_metrics(
-        self,
-    ) -> dict[str, Any]:
-        """
-        Initialize task-specific metrics state.
-        """
-
-        return {}
-
-    def execute_batch(
-        self,
-        implementation: BaseImplementation,
-        batch_inputs: list[bytes],
-    ) -> Any:
-        """
-        Execute one batch for this task and return task-specific batch output.
-        """
-
-        return None
-
-    def record_skipped_items(
-        self,
-        task_metrics: dict[str, Any],
-        count: int = 1,
-    ) -> None:
-        """
-        Record skipped task items for task-specific reporting.
-        """
-
-        _ = task_metrics
-        _ = count
-
-    def update_task_metrics_from_batch(
-        self,
-        task_metrics: dict[str, Any],
-        batch_output: Any,
-        batch_gt_labels: list[str],
-        label_mapping: dict[str, str],
-        implementation: BaseImplementation,
-    ) -> None:
-        """
-        Update task-specific metrics from one task-specific batch output.
-        """
-
-    def finalize_task_metrics(
-        self,
-        task_metrics: dict[str, Any],
-    ) -> dict[str, Any]:
-        """
-        Convert task-specific metrics state into report fields.
-        """
-
-        return {}
-
+    @abstractmethod
     def build_task_summary_lines(
         self,
         report: dict[str, Any],
     ) -> list[str]:
         """
         Build task-specific summary lines for console output.
-        """
-
-        return []
-
-    @abstractmethod
-    def build_label_mapping(
-        self,
-        implementation_name: str,
-        model_name: str,
-        class_descriptions: dict[str, str],
-    ) -> dict[str, str]:
-        """
-        Build mapping from predicted labels to class ids.
-        """
-
-    @abstractmethod
-    def create_implementation(
-        self,
-        implementation_name: str,
-        model_name: str,
-        custom_model_name: str,
-        custom_model_import_path: str,
-        class_descriptions: dict[str, str],
-        device: str,
-    ) -> BaseImplementation:
-        """
-        Create the concrete implementation for this task.
         """
 
     @abstractmethod
