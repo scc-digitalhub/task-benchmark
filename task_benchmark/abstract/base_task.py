@@ -12,12 +12,12 @@ from typing import Any
 from .runtime_metrics import RuntimeMetricsCollector
 
 
-class BaseTask(ABC):
+class BaseTask(ABC): # Task
     """
     Generic task abstraction that is independent from concrete implementations.
     """
 
-    task_name: str
+    task: str
     input_column: str
     label_column: str
 
@@ -100,11 +100,11 @@ class BaseTask(ABC):
     def execute_evaluation(
         self,
         dataset_path: Path,
-        implementation_name: str,
+        implementation: str,
         device: str,
         runtime_metrics: RuntimeMetricsCollector,
         **kwargs,
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ) -> dict[str, Any]:
         """
         Execute full task evaluation.
 
@@ -116,7 +116,5 @@ class BaseTask(ABC):
         - Track metrics
 
         Returns:
-            (task_metrics, task_report) tuple.
-            task_metrics: raw metric state dict
-            task_report: finalized report fields dict
+            Finalized report fields dict.
         """

@@ -21,10 +21,9 @@ def evaluate_model(
     model_name: str = "",
     batch_size: int = 8,
     device: str = "cpu",
-    task_name: str = "image-classification",
-    implementation_name: str = "task-inference",
-    custom_model_name: str = "hash-baseline",
-    custom_model_import_path: str = "",
+    task: str = "image-classification",
+    implementation: str = "task-inference",
+    implementation_import_path: str = "",
 ):
     """
     DigitalHub adapter for the benchmark evaluator.
@@ -43,15 +42,14 @@ def evaluate_model(
 
     evaluate(
         dataset_path=dataset_path,
-        task_name=task_name,
-        implementation_name=implementation_name,
+        task=task,
+        implementation=implementation,
         device=device,
         report_path=output_path,
         task_inputs_dir_path=task_inputs_dir_path,
         model_name=model_name,
         batch_size=batch_size,
-        custom_model_name=custom_model_name,
-        custom_model_import_path=custom_model_import_path,
+        implementation_import_path=implementation_import_path,
     )
 
     return project.log_artifact(

@@ -2,6 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .task import ImageClassificationTask
+from .task import (
+	ImageClassificationModel,
+	ImageClassificationTask,
+	Prediction,
+)
 
-__all__ = ["ImageClassificationTask"]
+__all__ = [
+	"ImageClassificationTask",
+	"ImageClassificationModel",
+	"Prediction",
+]

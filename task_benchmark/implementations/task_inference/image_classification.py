@@ -11,10 +11,11 @@ from task_inference.tasks.vision.image_classification import (
     ImageClassificationOutput,
 )
 
-from .models import (
+from task_benchmark.tasks.image_classification.task import (
     ImageClassificationModel,
     Prediction,
 )
+from task_benchmark.implementations.registry import implementation_registry
 
 
 class TaskInferenceImageClassifier(
@@ -27,7 +28,10 @@ class TaskInferenceImageClassifier(
         self,
         model_name: str,
         device: str,
+        class_descriptions: dict[str, str] | None = None,
     ):
+        _ = class_descriptions
+
         self.tasks = []
 
         if not device.startswith("cuda"):
@@ -130,3 +134,10 @@ class TaskInferenceImageClassifier(
             ]
             for per_image in output.results
         ]
+
+
+implementation_registry.register(
+    task="image-classification",
+    implementation="task-inference",
+    implementation_cls=TaskInferenceImageClassifier,
+)

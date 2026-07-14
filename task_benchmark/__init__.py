@@ -6,13 +6,10 @@
 
 from .core import evaluate
 
-__all__ = [
-	"evaluate",
-]
+__all__ = ["evaluate"]
 
 try:
 	from .digitalhub import evaluate_model
+	__all__ = ["evaluate", "evaluate_model"]
 except ModuleNotFoundError:
 	pass
-else:
-	__all__.append("evaluate_model")

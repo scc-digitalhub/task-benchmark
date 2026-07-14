@@ -4,6 +4,9 @@
 
 from __future__ import annotations
 
+import importlib
+from abc import abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -14,8 +17,25 @@ from task_benchmark.abstract import (
     BaseTask,
     RuntimeMetricsCollector,
 )
+from task_benchmark.implementations import implementation_registry
 
-from .implementations.factory import create_image_classifier
+
+@dataclass
+class Prediction:
+    label: str
+    score: float
+
+
+class ImageClassificationModel(BaseImplementation):
+    predicts_wnid: bool = False
+
+    @abstractmethod
+    def predict_batch(
+        self,
+        inputs: list[bytes],
+        top_k: int = 5,
+    ) -> list[list[Prediction]]:
+        pass
 
 
 def _build_label_to_wnid(
@@ -63,7 +83,7 @@ class ImageClassificationTask(BaseTask):
     Task-level adapter for image classification.
     """
 
-    task_name = "image-classification"
+    task = "image-classification"
     input_column = "image_path"
     label_column = "wnid"
     description_column = "class_description"
@@ -111,7 +131,7 @@ class ImageClassificationTask(BaseTask):
 
     def execute_batch(
         self,
-        implementation: BaseImplementation,
+        implementation: ImageClassificationModel,
         batch_inputs: list[bytes],
     ) -> list[list[str]]:
         predictions = implementation.predict_batch(
@@ -133,7 +153,7 @@ class ImageClassificationTask(BaseTask):
         batch_output: list[list[str]],
         batch_gt_labels: list[str],
         label_mapping: dict[str, str],
-        implementation: BaseImplementation,
+        implementation: ImageClassificationModel,
     ) -> None:
         predicts_task_labels = getattr(
             implementation,
@@ -196,16 +216,16 @@ class ImageClassificationTask(BaseTask):
 
     def _build_label_mapping(
         self,
-        implementation_name: str,
+        implementation: str,
         model_name: str,
         class_descriptions: dict[str, str],
     ) -> dict[str, str]:
-        if implementation_name != "task-inference":
+        if implementation != "task-inference":
             return {}
 
         if not model_name:
             raise ValueError(
-                "model_name is required when implementation_name='task-inference'."
+                "model_name is required when implementation='task-inference'."
             )
 
         print(f"Loading model config: {model_name}")
@@ -227,32 +247,14 @@ class ImageClassificationTask(BaseTask):
 
         return mapping
 
-    def _create_implementation(
-        self,
-        implementation_name: str,
-        model_name: str,
-        custom_model_name: str,
-        custom_model_import_path: str,
-        class_descriptions: dict[str, str],
-        device: str,
-    ) -> BaseImplementation:
-        return create_image_classifier(
-            implementation_name=implementation_name,
-            model_name=model_name,
-            custom_model_name=custom_model_name,
-            custom_model_import_path=custom_model_import_path,
-            class_descriptions=class_descriptions,
-            device=device,
-        )
-
     def execute_evaluation(
         self,
         dataset_path: Path,
-        implementation_name: str,
+        implementation: str,
         device: str,
         runtime_metrics: RuntimeMetricsCollector,
         **kwargs,
-    ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ) -> dict[str, Any]:
         """
         Execute full image classification evaluation.
 
@@ -266,8 +268,10 @@ class ImageClassificationTask(BaseTask):
         task_inputs_dir_path = Path(kwargs.get("task_inputs_dir_path", "."))
         model_name = kwargs.get("model_name", "")
         batch_size = kwargs.get("batch_size", 8)
-        custom_model_name = kwargs.get("custom_model_name", "hash-baseline")
-        custom_model_import_path = kwargs.get("custom_model_import_path", "")
+        implementation_import_path = kwargs.get("implementation_import_path", "")
+
+        if implementation_import_path:
+            importlib.import_module(implementation_import_path)
 
         # Load dataset
         rows = self.load_dataset_rows(dataset_path)
@@ -278,17 +282,16 @@ class ImageClassificationTask(BaseTask):
 
         # Build label mapping (task-specific)
         label_mapping = self._build_label_mapping(
-            implementation_name=implementation_name,
+            implementation=implementation,
             model_name=model_name,
             class_descriptions=class_descriptions,
         )
 
         # Create implementation
-        classifier = self._create_implementation(
-            implementation_name=implementation_name,
+        classifier = implementation_registry.create(
+            task=self.task,
+            implementation=implementation,
             model_name=model_name,
-            custom_model_name=custom_model_name,
-            custom_model_import_path=custom_model_import_path,
             class_descriptions=class_descriptions,
             device=device,
         )
@@ -360,6 +363,4 @@ class ImageClassificationTask(BaseTask):
             )
 
         # Finalize and return metrics
-        task_report = self.finalize_task_metrics(task_metrics=task_metrics)
-
-        return task_metrics, task_report
+        return self.finalize_task_metrics(task_metrics=task_metrics)

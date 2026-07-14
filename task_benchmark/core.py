@@ -18,8 +18,8 @@ def _print_summary(
 ) -> None:
     print()
     print("=" * 60)
-    print(f"Task: {report['task_name']}")
-    print(f"Implementation: {report['implementation_name']}")
+    print(f"Task: {report['task']}")
+    print(f"Implementation: {report['implementation']}")
 
     for summary_line in task_handler.build_task_summary_lines(
         report=report
@@ -36,8 +36,8 @@ def _print_summary(
 
 def evaluate(
     dataset_path: str | Path,
-    task_name: str,
-    implementation_name: str,
+    task: str,
+    implementation: str,
     device: str = "cpu",
     report_path: str | Path | None = None,
     **kwargs,
@@ -49,8 +49,8 @@ def evaluate(
 
     Args:
         dataset_path: Path to dataset CSV
-        task_name: Name of task to execute
-        implementation_name: Name of implementation to use
+        task: Name of task to execute
+        implementation: Name of implementation to use
         device: Compute device (cpu, cuda, cuda:0, etc.)
         report_path: Optional path to save JSON report
         **kwargs: Task and implementation-specific parameters
@@ -72,12 +72,12 @@ def evaluate(
     runtime_metrics.start()
 
     task_handler = create_task_handler(
-        task_name=task_name
+        task=task
     )
 
-    task_metrics, task_report = task_handler.execute_evaluation(
+    task_report = task_handler.execute_evaluation(
         dataset_path=dataset_path,
-        implementation_name=implementation_name,
+        implementation=implementation,
         device=device,
         runtime_metrics=runtime_metrics,
         **kwargs,
@@ -86,8 +86,8 @@ def evaluate(
     resource_metrics = runtime_metrics.finalize()
 
     report = {
-        "task_name": task_name,
-        "implementation_name": implementation_name,
+        "task": task,
+        "implementation": implementation,
         "device": device,
         **task_report,
         **resource_metrics,
