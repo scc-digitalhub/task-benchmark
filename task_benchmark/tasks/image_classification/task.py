@@ -17,7 +17,6 @@ from task_benchmark.abstract import (
     BaseTask,
     RuntimeMetricsCollector,
 )
-from task_benchmark.implementations import implementation_registry
 
 
 @dataclass
@@ -288,6 +287,8 @@ class ImageClassificationTask(BaseTask):
         )
 
         # Create implementation
+        from task_benchmark.implementations import implementation_registry
+
         classifier = implementation_registry.create(
             task=self.task,
             implementation=implementation,
