@@ -101,7 +101,6 @@ class BaseTask(ABC): # Task
         self,
         dataset_path: Path,
         implementation: str,
-        device: str,
         runtime_metrics: RuntimeMetricsCollector,
         **kwargs,
     ) -> dict[str, Any]:
@@ -114,6 +113,12 @@ class BaseTask(ABC): # Task
         - Iterate batches
         - Execute inference
         - Track metrics
+
+        Args:
+            dataset_path: Path to dataset to evaluate on
+            implementation: Name of implementation to use
+            runtime_metrics: Runtime metrics collector
+            **kwargs: Task and implementation-specific parameters
 
         Returns:
             Finalized report fields dict.

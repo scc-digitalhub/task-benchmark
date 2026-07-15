@@ -17,10 +17,9 @@ from .core import evaluate
 def evaluate_model(
     project,
     dataset,
-    task_inputs_dir=None,
     model_name: str = "",
     batch_size: int = 8,
-    device: str = "cpu",
+    device: str = "default",
     task: str = "image-classification",
     implementation: str = "task-inference",
     implementation_import_path: str = "",
@@ -31,13 +30,6 @@ def evaluate_model(
 
     dataset_path = dataset.download()
 
-    if task_inputs_dir is None:
-        raise ValueError(
-            "Missing required input directory. "
-            "Provide task_inputs_dir."
-        )
-
-    task_inputs_dir_path = task_inputs_dir.download()
     output_path = Path("evaluation_report.json")
 
     evaluate(
@@ -46,7 +38,6 @@ def evaluate_model(
         implementation=implementation,
         device=device,
         report_path=output_path,
-        task_inputs_dir_path=task_inputs_dir_path,
         model_name=model_name,
         batch_size=batch_size,
         implementation_import_path=implementation_import_path,

@@ -38,7 +38,7 @@ def evaluate(
     dataset_path: str | Path,
     task: str,
     implementation: str,
-    device: str = "cpu",
+    profile: str = "default",
     report_path: str | Path | None = None,
     **kwargs,
 ) -> dict[str, Any]:
@@ -48,10 +48,10 @@ def evaluate(
     Core responsibility: coordinate task execution and resource tracking.
 
     Args:
-        dataset_path: Path to dataset CSV
+        dataset_path: Path to dataset to evaluate on. May be directory or file, depending on task.
         task: Name of task to execute
         implementation: Name of implementation to use
-        device: Compute device (cpu, cuda, cuda:0, etc.)
+        profile: Resource profile to use (default, high-performance, etc.)
         report_path: Optional path to save JSON report
         **kwargs: Task and implementation-specific parameters
 
@@ -63,7 +63,7 @@ def evaluate(
 
     dataset_path = Path(dataset_path)
 
-    if not dataset_path.is_file():
+    if not dataset_path.exists():
         raise FileNotFoundError(
             f"Dataset not found: {dataset_path}"
         )
@@ -78,7 +78,6 @@ def evaluate(
     task_report = task_handler.execute_evaluation(
         dataset_path=dataset_path,
         implementation=implementation,
-        device=device,
         runtime_metrics=runtime_metrics,
         **kwargs,
     )
@@ -88,7 +87,7 @@ def evaluate(
     report = {
         "task": task,
         "implementation": implementation,
-        "device": device,
+        "profile": profile,
         **task_report,
         **resource_metrics,
     }
