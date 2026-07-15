@@ -70,12 +70,12 @@ The report returned by `evaluate(...)` is a dictionary that includes:
 
 ## Writing a custom implementation
 
-A custom image-classification implementation should:
-1. subclass `ImageClassificationModel`
-2. implement `predict_batch(inputs, top_k)`
+A custom implementation should:
+1. subclass the task's class
+2. implement necessary methods for the task
 3. register itself with `implementation_registry.register(...)`
 
-Minimal skeleton:
+Minimal skeleton for image-classification task:
 
 ```python
 from task_benchmark.implementations import implementation_registry
@@ -105,7 +105,7 @@ report = evaluate(
     task="image-classification",
     implementation="my-custom",
     task_inputs_dir_path="/path/to/images",
-    implementation_import_path="my_package.my_module",  # imports module and triggers registration
+    implementation_import_path="my_package.my_module",
     device="cpu",
 )
 ```
@@ -114,15 +114,36 @@ report = evaluate(
 
 `evaluate_model(...)` wraps the same core logic for DigitalHub runtime.
 
-Main adapter parameters:
+Core-like explicit adapter parameters:
 - `dataset`
-- `task_inputs_dir`
 - `task`
 - `implementation`
-- `implementation_import_path`
-- `model_name`
-- `batch_size`
 - `device`
+- `report_path`
+
+Task-specific / optional parameters are forwarded through `**kwargs` exactly like `evaluate(...)`.
+Examples: `task_inputs_dir_path`, `model_name`, `batch_size`, `implementation_import_path`.
+
+Example:
+
+```python
+run = eval_fn.run(
+    action="job",
+    inputs={
+        "dataset": dataset_dataitem.key,
+    },
+    parameters={
+        "task": "image-classification",
+        "implementation": "task-inference",
+        "device": "cuda",
+        "task_inputs_dir_path": "/path/available/in/runtime/images",
+        "model_name": "microsoft/cvt-13-384",
+        "batch_size": 128,
+    },
+    profile="1xV100",
+    wait=True,
+)
+```
 
 ## License
 

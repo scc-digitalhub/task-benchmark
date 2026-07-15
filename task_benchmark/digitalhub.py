@@ -17,13 +17,11 @@ from .core import evaluate
 def evaluate_model(
     project,
     dataset,
-    task_inputs_dir=None,
-    model_name: str = "",
-    batch_size: int = 8,
-    device: str = "cpu",
     task: str = "image-classification",
     implementation: str = "task-inference",
-    implementation_import_path: str = "",
+    device: str = "cpu",
+    report_path: str | Path | None = None,
+    **kwargs,
 ):
     """
     DigitalHub adapter for the benchmark evaluator.
@@ -31,14 +29,11 @@ def evaluate_model(
 
     dataset_path = dataset.download()
 
-    if task_inputs_dir is None:
-        raise ValueError(
-            "Missing required input directory. "
-            "Provide task_inputs_dir."
-        )
-
-    task_inputs_dir_path = task_inputs_dir.download()
-    output_path = Path("evaluation_report.json")
+    output_path = (
+        Path(report_path)
+        if report_path is not None
+        else Path("evaluation_report.json")
+    )
 
     evaluate(
         dataset_path=dataset_path,
@@ -46,10 +41,7 @@ def evaluate_model(
         implementation=implementation,
         device=device,
         report_path=output_path,
-        task_inputs_dir_path=task_inputs_dir_path,
-        model_name=model_name,
-        batch_size=batch_size,
-        implementation_import_path=implementation_import_path,
+        **kwargs,
     )
 
     return project.log_artifact(
