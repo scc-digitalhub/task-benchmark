@@ -19,11 +19,10 @@ Current built-in scope:
 from task_benchmark import evaluate
 
 report = evaluate(
-    dataset_path="/path/to/dataset.csv",
+    dataset_path="/path/to/dataset",
     task="image-classification",
     implementation="task-inference",
-    device="cpu",
-    task_inputs_dir_path="/path/to/images",
+    profile="default",
     model_name="microsoft/cvt-13-384",
     batch_size=8,
 )
@@ -32,16 +31,15 @@ report = evaluate(
 ### Parameters
 
 Required:
-- `dataset_path`: CSV path
+- `dataset_path`: path to the dataset
 - `task`: task name (currently `image-classification`)
 - `implementation`: implementation name (for example `task-inference` or a custom one)
 
 Optional common:
-- `device`: default `"cpu"`
+- `profile`: default `"default"`
 - `report_path`: save JSON report to disk
 
 Task/implementation-specific kwargs (image classification):
-- `task_inputs_dir_path`: directory containing images/files referenced by dataset
 - `model_name`: model id for implementations that need it (required by `task-inference`)
 - `batch_size`: batch size (default `8`)
 - `implementation_import_path`: optional module path to import before lookup (used to trigger self-registration for external implementations)
@@ -101,7 +99,7 @@ Then call:
 
 ```python
 report = evaluate(
-    dataset_path="/path/to/dataset.csv",
+    dataset_path="/path/to/dataset",
     task="image-classification",
     implementation="my-custom",
     task_inputs_dir_path="/path/to/images",
@@ -135,7 +133,7 @@ run = eval_fn.run(
     parameters={
         "task": "image-classification",
         "implementation": "task-inference",
-        "device": "cuda",
+        "device": "cuda", # double check with new profile parameter
         "task_inputs_dir_path": "/path/available/in/runtime/images",
         "model_name": "microsoft/cvt-13-384",
         "batch_size": 128,

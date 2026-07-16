@@ -17,10 +17,13 @@ from .core import evaluate
 def evaluate_model(
     project,
     dataset,
+    # model_name: str = "",
+    # batch_size: int = 8,
+    profile: str = "default",
     task: str = "image-classification",
     implementation: str = "task-inference",
     device: str = "cpu",
-    report_path: str | Path | None = None,
+    # report_path: str | Path | None = None,
     **kwargs,
 ):
     """
@@ -29,11 +32,7 @@ def evaluate_model(
 
     dataset_path = dataset.download()
 
-    output_path = (
-        Path(report_path)
-        if report_path is not None
-        else Path("evaluation_report.json")
-    )
+    output_path = Path("evaluation_report.json")
 
     evaluate(
         dataset_path=dataset_path,
@@ -41,6 +40,10 @@ def evaluate_model(
         implementation=implementation,
         device=device,
         report_path=output_path,
+        # model_name=model_name,
+        # batch_size=batch_size,
+        profile=profile,
+        # implementation_import_path=implementation_import_path,
         **kwargs,
     )
 
