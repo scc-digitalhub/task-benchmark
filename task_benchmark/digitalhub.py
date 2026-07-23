@@ -8,7 +8,7 @@ from pathlib import Path
 
 from digitalhub_runtime_python import handler
 
-from .core import evaluate
+from task_benchmark.core import evaluate
 
 
 @handler(
