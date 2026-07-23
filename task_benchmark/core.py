@@ -48,7 +48,7 @@ def evaluate(
     Core responsibility: coordinate task execution and resource tracking.
 
     Args:
-        dataset_path: Path to dataset to evaluate on. May be directory or file, depending on task.
+        dataset_path: Path to dataset root directory.
         task: Name of task to execute
         implementation: Name of implementation to use
         profile: Resource profile to use (default, high-performance, etc.)

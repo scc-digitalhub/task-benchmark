@@ -22,8 +22,6 @@ class TaskInferenceImageClassifier(
     ImageClassificationModel
 ):
 
-    predicts_wnid = False
-
     def __init__(
         self,
         model_name: str,

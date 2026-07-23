@@ -22,33 +22,31 @@ if __name__ == "__main__":
 		(inputs_dir / "img1.bin").write_bytes(MINIMAL_PNG)
 		(inputs_dir / "img2.bin").write_bytes(MINIMAL_PNG)
 
-		dataset_path = tmp_path / "dataset.csv"
-		with dataset_path.open("w", newline="") as fh:
+		dataset_csv = tmp_path / "dataset.csv"
+		with dataset_csv.open("w", newline="") as fh:
 			writer = csv.DictWriter(
 				fh,
-				fieldnames=["image_path", "wnid", "class_description"],
+				fieldnames=["image_path", "label"],
 			)
 			writer.writeheader()
 			writer.writerow(
 				{
 					"image_path": "img1.bin",
-					"wnid": "n01440764",
-					"class_description": "tench",
+					"label": "tench",
 				}
 			)
 			writer.writerow(
 				{
 					"image_path": "img2.bin",
-					"wnid": "n01443537",
-					"class_description": "tench",
+					"label": "tench",
 				}
 			)
 
 		report = evaluate(
-			dataset_path=dataset_path,
+			dataset_path=tmp_path,
 			task="image-classification",
 			implementation="most-common-class",
-			task_inputs_dir_path=inputs_dir,
+			image_dir="images",
 			implementation_import_path="my_custom_model.most_common",
 			device="cpu",
 			batch_size=2,

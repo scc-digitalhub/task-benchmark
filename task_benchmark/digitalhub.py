@@ -17,13 +17,10 @@ from .core import evaluate
 def evaluate_model(
     project,
     dataset,
-    # model_name: str = "",
-    # batch_size: int = 8,
     profile: str = "default",
     task: str = "image-classification",
     implementation: str = "task-inference",
     device: str = "cpu",
-    # report_path: str | Path | None = None,
     **kwargs,
 ):
     """
@@ -40,10 +37,7 @@ def evaluate_model(
         implementation=implementation,
         device=device,
         report_path=output_path,
-        # model_name=model_name,
-        # batch_size=batch_size,
         profile=profile,
-        # implementation_import_path=implementation_import_path,
         **kwargs,
     )
 

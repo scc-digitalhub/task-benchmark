@@ -10,8 +10,6 @@ from task_benchmark.tasks.image_classification import (
 
 
 class MyCustomImageClassifier(ImageClassificationModel):
-    predicts_wnid = True
-
     def __init__(
         self,
         model_name: str = "",

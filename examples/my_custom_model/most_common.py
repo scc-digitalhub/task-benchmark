@@ -10,8 +10,6 @@ from task_benchmark.tasks.image_classification.task import (
 class MostCommonClassModel(ImageClassificationModel):
     """Predict the class with the most common description as top-1."""
 
-    predicts_wnid = True
-
     def __init__(
         self,
         model_name: str = "",
@@ -31,14 +29,14 @@ class MostCommonClassModel(ImageClassificationModel):
         most_common_description, _ = description_counts.most_common(1)[0]
 
         majority_candidates = [
-            wnid
-            for wnid, description in class_descriptions.items()
+            label
+            for label, description in class_descriptions.items()
             if description == most_common_description
         ]
 
         self.majority_class = sorted(majority_candidates)[0]
         self.other_classes = sorted(
-            wnid for wnid in class_descriptions.keys() if wnid != self.majority_class
+            label for label in class_descriptions.keys() if label != self.majority_class
         )
 
     def predict_batch(self, images: list[bytes], top_k: int = 5) -> list[list[Prediction]]:
@@ -47,8 +45,8 @@ class MostCommonClassModel(ImageClassificationModel):
         for _ in images:
             ranked_classes = [self.majority_class, *self.other_classes][: max(1, top_k)]
             per_image: list[Prediction] = []
-            for rank, wnid in enumerate(ranked_classes):
-                per_image.append(Prediction(label=wnid, score=1.0 / float(rank + 1)))
+            for rank, label in enumerate(ranked_classes):
+                per_image.append(Prediction(label=label, score=1.0 / float(rank + 1)))
             predictions.append(per_image)
 
         return predictions

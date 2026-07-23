@@ -9,7 +9,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-# from transformers import AutoConfig
+
 
 from task_benchmark.abstract import (
     BaseImplementation,
@@ -25,8 +25,6 @@ class Prediction:
 
 
 class ImageClassificationModel(BaseImplementation):
-    predicts_wnid: bool = False
-
     @abstractmethod
     def predict_batch(
         self,
@@ -36,46 +34,6 @@ class ImageClassificationModel(BaseImplementation):
         pass
 
 
-# def _build_label_to_wnid(
-#     class_descriptions: dict[str, str],
-#     model_id2label: dict[int, str],
-# ) -> dict[str, str]:
-#     lower_model_labels = {
-#         label.lower(): label
-#         for label in model_id2label.values()
-#     }
-
-#     label_to_wnid: dict[str, str] = {}
-#     unmapped: list[str] = []
-
-#     for wnid, description in class_descriptions.items():
-#         desc_lower = description.lower()
-
-#         if desc_lower in lower_model_labels:
-#             label_to_wnid[lower_model_labels[desc_lower]] = wnid
-#             continue
-
-#         matched = None
-
-#         for model_lower, model_orig in lower_model_labels.items():
-#             if desc_lower in model_lower or model_lower in desc_lower:
-#                 matched = model_orig
-#                 break
-
-#         if matched:
-#             label_to_wnid[matched] = wnid
-#         else:
-#             unmapped.append(f"{wnid} ({description})")
-
-#     if unmapped:
-#         print(
-#             f"[WARNING] Could not map {len(unmapped)} classes.\n"
-#             + "\n".join(unmapped[:10])
-#         )
-
-#     return label_to_wnid
-
-
 class ImageClassificationTask(BaseTask):
     """
     Task-level adapter for image classification.
@@ -83,15 +41,31 @@ class ImageClassificationTask(BaseTask):
 
     task = "image-classification"
     input_column = "image_path"
-    label_column = "wnid"
+    label_column = "label"
     description_column = "class_description"
+
+    def _resolve_dataset_paths(
+        self,
+        dataset_path: Path,
+        dataset_csv: str = "dataset.csv",
+        image_dir: str = "images",
+    ) -> tuple[Path, Path]:
+        if not dataset_path.is_dir():
+            raise ValueError(
+                "dataset_path must be a directory containing the dataset CSV "
+                "and the input files directory."
+            )
+
+        row_path = dataset_path / dataset_csv
+        dataset_root = dataset_path
+
+        return row_path, dataset_root / image_dir
 
     @property
     def required_columns(self) -> set[str]:
         return {
             self.input_column,
             self.label_column,
-            self.description_column,
         }
 
     def _extract_class_descriptions(
@@ -105,7 +79,7 @@ class ImageClassificationTask(BaseTask):
             if class_id not in class_descriptions:
                 class_descriptions[class_id] = row.get(
                     self.description_column,
-                    "",
+                    class_id,
                 )
 
         return class_descriptions
@@ -150,26 +124,11 @@ class ImageClassificationTask(BaseTask):
         task_metrics: dict[str, int],
         batch_output: list[list[str]],
         batch_gt_labels: list[str],
-        implementation: ImageClassificationModel,
     ) -> None:
-        predicts_task_labels = getattr(
-            implementation,
-            "predicts_wnid",
-            False,
-        )
-
         for pred_labels, gt_label in zip(
             batch_output,
             batch_gt_labels,
         ):
-            # TODO: resolve the labeling in some other way
-            # if not predicts_task_labels:
-            #     pred_task_labels = [
-            #         label_mapping.get(pred_label)
-            #         for pred_label in pred_labels
-            #     ]
-            # else:
-            #     pred_task_labels = pred_labels
             pred_task_labels = pred_labels
 
             if (
@@ -213,39 +172,6 @@ class ImageClassificationTask(BaseTask):
             f"Top-5 accuracy: {report['top5_accuracy']:.4f}",
         ]
 
-    # def _build_label_mapping(
-    #     self,
-    #     implementation: str,
-    #     model_name: str,
-    #     class_descriptions: dict[str, str],
-    # ) -> dict[str, str]:
-    #     if implementation != "task-inference":
-    #         return {}
-
-    #     if not model_name:
-    #         raise ValueError(
-    #             "model_name is required when implementation='task-inference'."
-    #         )
-
-    #     print(f"Loading model config: {model_name}")
-    #     config = AutoConfig.from_pretrained(model_name)
-
-    #     id2label = {
-    #         int(k): v
-    #         for k, v in config.id2label.items()
-    #     }
-
-    #     print("Building label mapping...")
-
-    #     mapping = _build_label_to_wnid(
-    #         class_descriptions=class_descriptions,
-    #         model_id2label=id2label,
-    #     )
-
-    #     print(f"Mapped {len(mapping)} labels.")
-
-    #     return mapping
-
     def execute_evaluation(
         self,
         dataset_path: Path,
@@ -260,16 +186,16 @@ class ImageClassificationTask(BaseTask):
         Delegates to task-specific helper methods for each stage.
         """
 
-        # directory with the input files (images) for the task and dataset.csv
         dataset_path = Path(dataset_path)
-        row_path = dataset_path / (kwargs.get("dataset_path", "dataset.csv"))
-        image_path = dataset_path / (kwargs.get("image_dir", "images"))
-
+        row_path, image_path = self._resolve_dataset_paths(
+            dataset_path=dataset_path,
+            dataset_csv=kwargs.get("dataset_csv", "dataset.csv"),
+            image_dir=kwargs.get("image_dir", "images"),
+        )
 
         # Extract task-specific parameters from kwargs
         batch_size = kwargs.get("batch_size", 8)
-        
-        # TODO: why is needed?
+
         implementation_import_path = kwargs.get("implementation_import_path", "")
         if implementation_import_path:
             importlib.import_module(implementation_import_path)
@@ -284,11 +210,20 @@ class ImageClassificationTask(BaseTask):
         # Create implementation
         from task_benchmark.implementations import implementation_registry
 
+        implementation_kwargs = dict(kwargs)
+        for key in (
+            "batch_size",
+            "implementation_import_path",
+            "dataset_csv",
+            "image_dir",
+        ):
+            implementation_kwargs.pop(key, None)
+
         classifier = implementation_registry.create(
             task=self.task,
             implementation=implementation,
             class_descriptions=class_descriptions,
-            **kwargs,
+            **implementation_kwargs,
         )
 
         # Initialize task metrics
@@ -348,9 +283,6 @@ class ImageClassificationTask(BaseTask):
                 task_metrics=task_metrics,
                 batch_output=batch_output,
                 batch_gt_labels=batch_gt_labels,
-                # TODO: resolve the labeling in some other way
-                # label_mapping=label_mapping,
-                implementation=classifier,
             )
 
             runtime_metrics.finish_batch(
