@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from task_benchmark.abstract import BaseTask
+from ..abstract import BaseTask
 
-from .image_classification.task import ImageClassificationTask
+from .image_classification import ImageClassificationTask
 
 
 _TASKS: dict[str, type[BaseTask]] = {

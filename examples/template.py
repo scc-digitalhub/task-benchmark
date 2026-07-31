@@ -14,11 +14,11 @@ class MyCustomImageClassifier(ImageClassificationModel):
         self,
         model_name: str = "",
         device: str = "cpu",
-        class_descriptions: dict[str, str] | None = None,
+        labels: list[str] | None = None,
     ) -> None:
         self.model_name = model_name
         self.device = device
-        self.class_descriptions = class_descriptions or {}
+        self.labels = labels or []
 
     def predict_batch(
         self,

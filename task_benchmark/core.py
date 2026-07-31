@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from task_benchmark.abstract import RuntimeMetricsCollector
+from task_benchmark.abstract import BaseDataObject, RuntimeMetricsCollector
 from task_benchmark.tasks import create_task_handler
 
 
@@ -35,9 +35,9 @@ def _print_summary(
 
 
 def evaluate(
-    dataset_path: str | Path,
     task: str,
     implementation: str,
+    data_object: BaseDataObject,
     profile: str = "default",
     report_path: str | Path | None = None,
     **kwargs,
@@ -48,9 +48,9 @@ def evaluate(
     Core responsibility: coordinate task execution and resource tracking.
 
     Args:
-        dataset_path: Path to dataset root directory.
         task: Name of task to execute
         implementation: Name of implementation to use
+        data_object: Task-specific dataset object
         profile: Resource profile to use (default, high-performance, etc.)
         report_path: Optional path to save JSON report
         **kwargs: Task and implementation-specific parameters
@@ -61,13 +61,6 @@ def evaluate(
 
     print("Starting evaluation job...")
 
-    dataset_path = Path(dataset_path)
-
-    if not dataset_path.exists():
-        raise FileNotFoundError(
-            f"Dataset not found: {dataset_path}"
-        )
-
     runtime_metrics = RuntimeMetricsCollector()
     runtime_metrics.start()
 
@@ -76,8 +69,8 @@ def evaluate(
     )
 
     task_report = task_handler.execute_evaluation(
-        dataset_path=dataset_path,
         implementation=implementation,
+        data_object=data_object,
         runtime_metrics=runtime_metrics,
         **kwargs,
     )

@@ -8,35 +8,33 @@ from task_benchmark.tasks.image_classification.task import (
 
 
 class MostCommonClassModel(ImageClassificationModel):
-    """Predict the class with the most common description as top-1."""
+    """Predict the most common label as top-1."""
 
     def __init__(
         self,
         model_name: str = "",
         device: str = "cpu",
-        class_descriptions: dict[str, str] | None = None,
+        labels: list[str] | None = None,
     ) -> None:
         _ = model_name
         _ = device
 
-        if class_descriptions is None:
-            class_descriptions = {}
+        labels = labels or []
 
-        if not class_descriptions:
-            raise ValueError("class_descriptions cannot be empty")
+        if not labels:
+            raise ValueError("labels cannot be empty")
 
-        description_counts = Counter(class_descriptions.values())
-        most_common_description, _ = description_counts.most_common(1)[0]
-
+        label_counts = Counter(labels)
+        max_count = max(label_counts.values())
         majority_candidates = [
             label
-            for label, description in class_descriptions.items()
-            if description == most_common_description
+            for label, count in label_counts.items()
+            if count == max_count
         ]
 
-        self.majority_class = sorted(majority_candidates)[0]
+        self.majority_class = sorted(set(majority_candidates))[0]
         self.other_classes = sorted(
-            label for label in class_descriptions.keys() if label != self.majority_class
+            label for label in set(labels) if label != self.majority_class
         )
 
     def predict_batch(self, images: list[bytes], top_k: int = 5) -> list[list[Prediction]]:

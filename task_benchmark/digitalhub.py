@@ -16,7 +16,7 @@ from task_benchmark.core import evaluate
 )
 def evaluate_model(
     project,
-    dataset,
+    dataset=None,
     profile: str = "default",
     task: str = "image-classification",
     implementation: str = "task-inference",
@@ -27,14 +27,18 @@ def evaluate_model(
     DigitalHub adapter for the benchmark evaluator.
     """
 
-    dataset_path = dataset.download()
+    data_object = kwargs.pop("data_object", None)
+    if data_object is None:
+        raise ValueError(
+            "data_object is required and must contain the full task dataset"
+        )
 
     output_path = Path("evaluation_report.json")
 
     evaluate(
-        dataset_path=dataset_path,
         task=task,
         implementation=implementation,
+        data_object=data_object,
         device=device,
         report_path=output_path,
         profile=profile,

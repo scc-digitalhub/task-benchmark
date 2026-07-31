@@ -1,8 +1,8 @@
-import csv
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from task_benchmark import evaluate
+from task_benchmark.tasks.image_classification import ImageClassificationDataObject
 
 
 MINIMAL_PNG = (
@@ -14,43 +14,30 @@ MINIMAL_PNG = (
 
 
 if __name__ == "__main__":
-	with TemporaryDirectory() as tmp_dir:
-		tmp_path = Path(tmp_dir)
-		inputs_dir = tmp_path / "images"
-		inputs_dir.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        inputs_dir = tmp_path / "images"
+        inputs_dir.mkdir(parents=True, exist_ok=True)
 
-		(inputs_dir / "img1.bin").write_bytes(MINIMAL_PNG)
-		(inputs_dir / "img2.bin").write_bytes(MINIMAL_PNG)
+        (inputs_dir / "img1.bin").write_bytes(MINIMAL_PNG)
+        (inputs_dir / "img2.bin").write_bytes(MINIMAL_PNG)
 
-		dataset_csv = tmp_path / "dataset.csv"
-		with dataset_csv.open("w", newline="") as fh:
-			writer = csv.DictWriter(
-				fh,
-				fieldnames=["image_path", "label"],
-			)
-			writer.writeheader()
-			writer.writerow(
-				{
-					"image_path": "img1.bin",
-					"label": "tench",
-				}
-			)
-			writer.writerow(
-				{
-					"image_path": "img2.bin",
-					"label": "tench",
-				}
-			)
+        data_object = ImageClassificationDataObject(
+            images_path=[
+                str(inputs_dir / "img1.bin"),
+                str(inputs_dir / "img2.bin"),
+            ],
+            labels=["tench", "tench"],
+        )
 
-		report = evaluate(
-			dataset_path=tmp_path,
-			task="image-classification",
-			implementation="most-common-class",
-			image_dir="images",
-			implementation_import_path="my_custom_model.most_common",
-			device="cpu",
-			batch_size=2,
-		)
+        report = evaluate(
+            task="image-classification",
+            implementation="most-common-class",
+            data_object=data_object,
+            implementation_import_path="my_custom_model.most_common",
+            device="cpu",
+            batch_size=2,
+        )
 
-		print("Top-1 accuracy:", report["top1_accuracy"])
-		print("Top-5 accuracy:", report["top5_accuracy"])
+        print("Top-1 accuracy:", report["top1_accuracy"])
+        print("Top-5 accuracy:", report["top5_accuracy"])

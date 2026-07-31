@@ -26,9 +26,9 @@ class TaskInferenceImageClassifier(
         self,
         model_name: str,
         device: str,
-        class_descriptions: dict[str, str] | None = None,
+        labels: list[str] | None = None,
     ):
-        _ = class_descriptions
+        _ = labels
 
         self.tasks = []
 

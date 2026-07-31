@@ -1,7 +1,7 @@
-import csv
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from task_benchmark.tasks.image_classification import ImageClassificationDataObject
 
 from task_benchmark.core import evaluate
 
@@ -23,32 +23,19 @@ if __name__ == "__main__":
         (inputs_dir / "img1.png").write_bytes(MINIMAL_PNG)
         (inputs_dir / "img2.png").write_bytes(MINIMAL_PNG)
 
-        dataset_csv = tmp_path / "dataset.csv"
-        with dataset_csv.open("w", newline="") as fh:
-            writer = csv.DictWriter(
-                fh,
-                fieldnames=["image_path", "label"],
-            )
-            writer.writeheader()
-            writer.writerow(
-                {
-                    "image_path": "img1.png",
-                    "label": "tench",
-                }
-            )
-            writer.writerow(
-                {
-                    "image_path": "img2.png",
-                    "label": "goldfish",
-                }
-            )
+        data_object = ImageClassificationDataObject(
+            images_path=[
+                str(inputs_dir / "img1.png"),
+                str(inputs_dir / "img2.png"),
+            ],
+            labels=["tench", "goldfish"],
+        )
 
         report = evaluate(
-            dataset_path=tmp_path,
             model_name="microsoft/cvt-13-384",
             task="image-classification",
             implementation="task-inference",
-            image_dir="images",
+            data_object=data_object,
             device="cpu",
             batch_size=2,
         )

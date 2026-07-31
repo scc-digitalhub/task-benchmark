@@ -1,10 +1,10 @@
-import csv
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from task_benchmark.core import evaluate
 from task_benchmark.implementations import implementation_registry
 from task_benchmark.tasks.image_classification import (
+    ImageClassificationDataObject,
     ImageClassificationModel,
     Prediction,
 )
@@ -25,14 +25,14 @@ class AlwaysFirstClassImageClassifier(ImageClassificationModel):
         self,
         model_name: str = "",
         device: str = "cpu",
-        class_descriptions: dict[str, str] | None = None,
+        labels: list[str] | None = None,
     ) -> None:
         _ = model_name
         _ = device
 
-        classes = sorted((class_descriptions or {}).keys())
+        classes = sorted(set(labels or []))
         if not classes:
-            raise ValueError("class_descriptions cannot be empty")
+            raise ValueError("labels cannot be empty")
 
         self.first_class = classes[0]
 
@@ -66,31 +66,18 @@ if __name__ == "__main__":
         (inputs_dir / "img1.bin").write_bytes(MINIMAL_PNG)
         (inputs_dir / "img2.bin").write_bytes(MINIMAL_PNG)
 
-        dataset_csv = tmp_path / "dataset.csv"
-        with dataset_csv.open("w", newline="") as fh:
-            writer = csv.DictWriter(
-                fh,
-                fieldnames=["image_path", "label"],
-            )
-            writer.writeheader()
-            writer.writerow(
-                {
-                    "image_path": "img1.bin",
-                    "label": "tench",
-                }
-            )
-            writer.writerow(
-                {
-                    "image_path": "img2.bin",
-                    "label": "goldfish",
-                }
-            )
+        data_object = ImageClassificationDataObject(
+            images_path=[
+                str(inputs_dir / "img1.bin"),
+                str(inputs_dir / "img2.bin"),
+            ],
+            labels=["tench", "goldfish"],
+        )
 
         report = evaluate(
-            dataset_path=tmp_path,
             task="image-classification",
             implementation="always-first-class",
-            image_dir="images",
+            data_object=data_object,
             device="cpu",
             batch_size=2,
         )
