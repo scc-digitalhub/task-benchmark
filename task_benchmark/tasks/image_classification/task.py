@@ -122,10 +122,14 @@ class ImageClassificationTask(BaseTask[ImageClassificationDataObject]):
         batch_gt_labels: list[str],
     ) -> None:
         for pred_labels, gt_label in zip(batch_output, batch_gt_labels):
-            if pred_labels and pred_labels[0] == gt_label:
+            if pred_labels and (
+                pred_labels[0] in gt_label or gt_label in pred_labels[0]
+            ):
                 task_metrics["top1_correct"] += 1
 
-            if gt_label in pred_labels[:5]:
+            if any(
+                pred in gt_label or gt_label in pred for pred in pred_labels[:5]
+            ):
                 task_metrics["top5_correct"] += 1
 
             task_metrics["total"] += 1
