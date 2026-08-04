@@ -1,16 +1,14 @@
-import csv
 import kagglehub
+import pandas as pd
 from pathlib import Path
 
 from task_benchmark import evaluate
 from task_benchmark.tasks.image_classification.task import ImageClassificationDataObject
 
-DATASET_CSV = Path(__file__).parent / "tiny-imagenet-200-slice-1000.csv"
 
-# DOWNLOAD THE DATASET 
+# DOWNLOAD THE DATASET
 path = kagglehub.dataset_download("akash2sharma/tiny-imagenet")
-IMAGES_ROOT = Path(path) / "tiny-imagenet-200" / "val" / "images"
-
+DATASET = Path(path) / "tiny-imagenet-200" / "val"
 
 MODEL_NAME = "microsoft/cvt-13-384"
 BATCH_SIZE = 128
@@ -18,30 +16,37 @@ DEVICE = "cpu"
 REPORT_PATH = Path(__file__).parent / "report_cvt13.json"
 
 
-def load_data_object(csv_path: Path, images_root: Path) -> ImageClassificationDataObject:
-    images_path: list[str] = []
-    labels: list[str] = []
+# builds the pandas DataFrame from the tiny-imagenet validation set
+def build_dataframe(val_root: Path) -> pd.DataFrame:
+    words_file = val_root.parent / "words.txt"
+    synset_to_label = dict(
+        line.strip().split("\t", 1)
+        for line in words_file.open()
+    )
 
-    with csv_path.open(newline="") as fh:
-        for row in csv.DictReader(fh):
-            abs_path = images_root / row["filename"]
-            images_path.append(str(abs_path))
-            labels.append(row["label"])
+    images_dir = val_root / "images"
+    annotations = val_root / "val_annotations.txt"
+    rows = []
+    with annotations.open() as fh:
+        for line in fh:
+            filename, synset, *_ = line.split("\t")
+            rows.append({
+                "image_path": str(images_dir / filename),
+                "label": synset_to_label[synset],
+            })
+    return pd.DataFrame(rows).head(1000)
 
+# loads the data object from the pandas DataFrame
+def load_data_object(df: pd.DataFrame) -> ImageClassificationDataObject:
     return ImageClassificationDataObject(
-        images_path=images_path,
-        labels=labels,
+        images_path=df["image_path"].tolist(),
+        labels=df["label"].tolist(),
     )
 
 
 if __name__ == "__main__":
-    print(f"Dataset : {DATASET_CSV}")
-    print(f"Images  : {IMAGES_ROOT}")
-    print(f"Model   : {MODEL_NAME}")
-    print(f"Device  : {DEVICE}")
-    print(f"Batch   : {BATCH_SIZE}")
-
-    data_object = load_data_object(DATASET_CSV, IMAGES_ROOT)
+    df = build_dataframe(DATASET)
+    data_object = load_data_object(df)
 
     report = evaluate(
         task="image-classification",
