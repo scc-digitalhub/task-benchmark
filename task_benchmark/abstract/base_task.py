@@ -25,6 +25,15 @@ class BaseTask(ABC, Generic[DataObjectT]): # Task
     task: str
 
     @abstractmethod
+    def build_data_object(
+        self,
+        payload: dict[str, Any],
+    ) -> BaseDataObject:
+        """
+        Build and validate a concrete task data object from a plain payload.
+        """
+
+    @abstractmethod
     def get_ground_truth(
         self,
         data_object: DataObjectT,

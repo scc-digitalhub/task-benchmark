@@ -57,6 +57,25 @@ class ImageClassificationTask(BaseTask[ImageClassificationDataObject]):
     """
 
     task = "image-classification"
+
+    def build_data_object(
+        self,
+        payload: dict[str, Any],
+    ) -> BaseDataObject:
+        images_path = payload.get("images_path")
+        labels = payload.get("labels")
+
+        if not isinstance(images_path, list) or not isinstance(labels, list):
+            raise ValueError(
+                "For image-classification, data_object must include "
+                "'images_path' and 'labels' lists."
+            )
+
+        return ImageClassificationDataObject(
+            images_path=[str(path) for path in images_path],
+            labels=[str(label) for label in labels],
+        )
+
     def _extract_labels_from_data_object(
         self,
         data_object: ImageClassificationDataObject,
