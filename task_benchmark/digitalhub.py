@@ -8,6 +8,7 @@ from pathlib import Path
 
 from digitalhub_runtime_python import handler
 
+from task_benchmark.abstract import BaseDataObject
 from task_benchmark.core import evaluate
 
 
@@ -16,7 +17,7 @@ from task_benchmark.core import evaluate
 )
 def evaluate_model(
     project,
-    dataset=None,
+    data_object: BaseDataObject,
     profile: str = "default",
     task: str = "image-classification",
     implementation: str = "task-inference",
@@ -26,12 +27,6 @@ def evaluate_model(
     """
     DigitalHub adapter for the benchmark evaluator.
     """
-
-    data_object = kwargs.pop("data_object", None)
-    if data_object is None:
-        raise ValueError(
-            "data_object is required and must contain the full task dataset"
-        )
 
     output_path = Path("evaluation_report.json")
 
