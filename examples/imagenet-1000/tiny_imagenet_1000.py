@@ -19,7 +19,7 @@ REPORT_PATH = Path(__file__).parent / "report_cvt13.json"
 # builds the pandas DataFrame from the tiny-imagenet validation set
 def build_dataframe(val_root: Path) -> pd.DataFrame:
     words_file = val_root.parent / "words.txt"
-    synset_to_label = dict(
+    class_id_to_label = dict(
         line.strip().split("\t", 1)
         for line in words_file.open()
     )
@@ -29,10 +29,10 @@ def build_dataframe(val_root: Path) -> pd.DataFrame:
     rows = []
     with annotations.open() as fh:
         for line in fh:
-            filename, synset, *_ = line.split("\t")
+            filename, class_id, *_ = line.split("\t")
             rows.append({
                 "image_path": str(images_dir / filename),
-                "label": synset_to_label[synset],
+                "label": class_id_to_label[class_id],
             })
     return pd.DataFrame(rows).head(1000)
 

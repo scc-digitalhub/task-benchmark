@@ -3,50 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import kagglehub
-import pandas as pd
 from digitalhub_runtime_python import handler
 
 from task_benchmark import evaluate
 from task_benchmark.tasks import create_task_handler
-from task_benchmark.tasks.image_classification.task import ImageClassificationDataObject
-
-
-MODEL_NAME = "microsoft/cvt-13-384"
-BATCH_SIZE = 128
-DEVICE = "cpu"
-REPORT_PATH = Path(__file__).parent / "report_cvt13.json"
-
-
-def build_dataframe(val_root: Path) -> pd.DataFrame:
-    """Build a DataFrame from Tiny-ImageNet validation annotations."""
-    words_file = val_root.parent / "words.txt"
-    synset_to_label = dict(
-        line.strip().split("\t", 1)
-        for line in words_file.open()
-    )
-
-    images_dir = val_root / "images"
-    annotations = val_root / "val_annotations.txt"
-    rows = []
-    with annotations.open() as fh:
-        for line in fh:
-            filename, synset, *_ = line.split("\t")
-            rows.append(
-                {
-                    "image_path": str(images_dir / filename),
-                    "label": synset_to_label[synset],
-                }
-            )
-    return pd.DataFrame(rows)
-
-
-def load_data_object(df: pd.DataFrame) -> ImageClassificationDataObject:
-    """Convert DataFrame columns into task-benchmark data object."""
-    return ImageClassificationDataObject(
-        images_path=df["image_path"].tolist(),
-        labels=df["label"].tolist(),
-    )
 
 
 def _download_if_artifact(value: Any) -> Any:
@@ -73,23 +33,102 @@ def _materialize_artifacts(value: Any) -> Any:
     return _download_if_artifact(value)
 
 
+def _resolve_tiny_imagenet_val_root(dataset_artifact: Any) -> Path:
+    """Resolve val root from a downloaded Tiny-ImageNet artifact."""
+    resolved = _materialize_artifacts(dataset_artifact)
+    dataset_path = Path(str(resolved))
+
+    if dataset_path.is_file():
+        raise ValueError(
+            "dataset artifact must resolve to a directory, not a file. "
+            f"Got: {dataset_path}"
+        )
+
+    direct_val = dataset_path
+    nested_val = dataset_path / "tiny-imagenet-200" / "val"
+
+    for candidate in (direct_val, nested_val):
+        if (candidate / "val_annotations.txt").is_file() and (candidate / "images").is_dir():
+            return candidate
+
+    raise ValueError(
+        "Could not resolve Tiny-ImageNet val directory from artifact. "
+        "Expected either <artifact>/val_annotations.txt + <artifact>/images, "
+        "or <artifact>/tiny-imagenet-200/val/...."
+    )
+
+
+def _build_payload_from_tiny_imagenet_val(
+    val_root: Path,
+    max_samples: int | None,
+) -> dict[str, list[str]]:
+    words_file = val_root.parent / "words.txt"
+    if not words_file.is_file():
+        raise ValueError(f"Missing words.txt at expected path: {words_file}")
+
+    class_id_to_label = {
+        class_id: description
+        for class_id, description in (
+            line.strip().split("\t", 1)
+            for line in words_file.read_text().splitlines()
+            if line.strip()
+        )
+    }
+
+    annotations = val_root / "val_annotations.txt"
+    if not annotations.is_file():
+        raise ValueError(f"Missing val_annotations.txt at expected path: {annotations}")
+
+    images_dir = val_root / "images"
+    images_path: list[str] = []
+    labels: list[str] = []
+
+    for line in annotations.read_text().splitlines():
+        if not line.strip():
+            continue
+
+        filename, class_id, *_ = line.split("\t")
+        label = class_id_to_label.get(class_id)
+        if label is None:
+            raise ValueError(f"Class id '{class_id}' not found in words.txt")
+
+        images_path.append(str(images_dir / filename))
+        labels.append(label)
+
+        if max_samples is not None and len(images_path) >= max_samples:
+            break
+
+    if not images_path:
+        raise ValueError("No samples found while building payload from Tiny-ImageNet artifact.")
+
+    return {
+        "images_path": images_path,
+        "labels": labels,
+    }
+
+
 @handler(outputs=["evaluation_report"])
 def evaluate_model(
     project,
-    data_object: dict[str, Any],
+    dataset_artifact,
     profile: str = "default",
     task: str = "image-classification",
     implementation: str = "task-inference",
     device: str = "cpu",
+    max_samples: int = 1000,
     **kwargs,
 ):
     """DigitalHub runtime entrypoint."""
 
-    resolved_data_object = _materialize_artifacts(data_object)
+    val_root = _resolve_tiny_imagenet_val_root(dataset_artifact)
+    payload = _build_payload_from_tiny_imagenet_val(
+        val_root=val_root,
+        max_samples=max_samples,
+    )
     resolved_kwargs = _materialize_artifacts(kwargs)
 
     task_handler = create_task_handler(task=task)
-    task_data_object = task_handler.build_data_object(payload=resolved_data_object)
+    task_data_object = task_handler.build_data_object(payload=payload)
 
     output_path = Path("evaluation_report.json")
 
@@ -108,25 +147,3 @@ def evaluate_model(
         kind="table",
         source=str(output_path),
     )
-
-
-if __name__ == "__main__":
-    path = kagglehub.dataset_download("akash2sharma/tiny-imagenet")
-    dataset_root = Path(path) / "tiny-imagenet-200" / "val"
-
-    df = build_dataframe(dataset_root).head(1000)
-    local_data_object = load_data_object(df)
-
-    report = evaluate(
-        task="image-classification",
-        implementation="task-inference",
-        data_object=local_data_object,
-        model_name=MODEL_NAME,
-        device=DEVICE,
-        batch_size=BATCH_SIZE,
-        report_path=REPORT_PATH,
-    )
-
-    print("Top-1 accuracy:", report["top1_accuracy"])
-    print("Top-5 accuracy:", report["top5_accuracy"])
-    print("Report saved to:", REPORT_PATH)
