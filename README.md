@@ -7,61 +7,64 @@ Current built-in scope:
 - Built-in implementation: `task-inference`
 
 
-## Main entry points
-
-- Library API: `task_benchmark.evaluate`
-- DigitalHub adapter: `task_benchmark.evaluate_model`
 
 ## Base usage
 
 
 ```python
 from task_benchmark import evaluate
+from task_benchmark.tasks.image_classification.task import ImageClassificationDataObject
+
+data_object = ImageClassificationDataObject(
+    images_path=["/path/to/img1.jpg", "/path/to/img2.jpg"],
+    labels=["tench", "goldfish"],
+)
 
 report = evaluate(
-    dataset_path="/path/to/dataset",
     task="image-classification",
-    implementation="task-inference",
-    profile="default",
-    model_name="microsoft/cvt-13-384",
-    batch_size=8,
+    implementation="my-custom",
+    data_object=data_object,
+    implementation_import_path="my_package.my_module",
+    device="cpu",
 )
 ```
 
 ### Parameters
 
 Required:
-- `dataset_path`: path to the dataset
 - `task`: task name (currently `image-classification`)
 - `implementation`: implementation name (for example `task-inference` or a custom one)
+- `data_object`: task-specific input data object
 
 Optional common:
 - `profile`: default `"default"`
 - `report_path`: save JSON report to disk
+- `device`: execution device (for example `cpu` or `cuda`)
 
 Task/implementation-specific kwargs (image classification):
 - `model_name`: model id for implementations that need it (required by `task-inference`)
 - `batch_size`: batch size (default `8`)
 - `implementation_import_path`: optional module path to import before lookup (used to trigger self-registration for external implementations)
 
-## Dataset format (image-classification)
+## Input format (image-classification)
 
-Expected CSV columns:
-- `image_path`
-- `wnid`
-- `class_description`
+The image-classification task expects a data object with:
+- `images_path`: list of image file paths
+- `labels`: list of ground-truth labels (same length as `images_path`)
 
-Example row:
+Example:
 
-```csv
-image_path,wnid,class_description
-img1.bin,n01440764,tench
+```python
+ImageClassificationDataObject(
+    images_path=["/data/images/img1.jpg", "/data/images/img2.jpg"],
+    labels=["tench", "goldfish"],
+)
 ```
 
 ## Report output
 
 The report returned by `evaluate(...)` is a dictionary that includes:
-- task metadata: `task`, `implementation`, `device`
+- task metadata: `task`, `implementation`, `profile`
 - task metrics: `top1_accuracy`, `top5_accuracy`, `dataset_images_evaluated`, `dataset_images_skipped`
 - runtime metrics: wall/cpu time, memory, per-batch aggregates
 
@@ -99,10 +102,9 @@ Then call:
 
 ```python
 report = evaluate(
-    dataset_path="/path/to/dataset",
     task="image-classification",
     implementation="my-custom",
-    task_inputs_dir_path="/path/to/images",
+    data_object=data_object,
     implementation_import_path="my_package.my_module",
     device="cpu",
 )
@@ -110,38 +112,14 @@ report = evaluate(
 
 ## DigitalHub usage
 
-`evaluate_model(...)` wraps the same core logic for DigitalHub runtime.
+Use the standalone example at `examples/imagenet-1000/tiny_imagenet_1000_digitalhub.py`.
 
-Core-like explicit adapter parameters:
-- `dataset`
-- `task`
-- `implementation`
-- `device`
-- `report_path`
-
-Task-specific / optional parameters are forwarded through `**kwargs` exactly like `evaluate(...)`.
-Examples: `task_inputs_dir_path`, `model_name`, `batch_size`, `implementation_import_path`.
-
-Example:
-
-```python
-run = eval_fn.run(
-    action="job",
-    inputs={
-        "dataset": dataset_dataitem.key,
-    },
-    parameters={
-        "task": "image-classification",
-        "implementation": "task-inference",
-        "device": "cuda", # double check with new profile parameter
-        "task_inputs_dir_path": "/path/available/in/runtime/images",
-        "model_name": "microsoft/cvt-13-384",
-        "batch_size": 128,
-    },
-    profile="1xV100",
-    wait=True,
-)
-```
+The example contains a `@handler` entrypoint that:
+- accepts input artifact(s) from DigitalHub
+- resolves/downloads them in runtime
+- builds the task data object
+- runs `evaluate(...)`
+- logs the evaluation report artifact
 
 ## License
 
