@@ -144,6 +144,5 @@ def evaluate_model(
 
     return project.log_artifact(
         name="evaluation_report",
-        kind="table",
         source=str(output_path),
     )
