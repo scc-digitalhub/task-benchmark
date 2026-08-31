@@ -7,10 +7,12 @@ from __future__ import annotations
 from ..abstract import BaseTask
 
 from .image_classification import ImageClassificationTask
+from .audio_classification import AudioClassificationTask
 
 
 _TASKS: dict[str, type[BaseTask]] = {
     "image-classification": ImageClassificationTask,
+    "audio-classification": AudioClassificationTask,
 }
 
 

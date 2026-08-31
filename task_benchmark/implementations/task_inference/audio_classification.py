@@ -8,20 +8,20 @@ from typing import Any
 
 import torch
 from task_inference import create_task
-from task_inference.tasks.vision.image_classification import (
-    ImageClassificationInput,
-    ImageClassificationOutput,
+from task_inference.tasks.audio.audio_classification import (
+    AudioClassificationInput,
+    AudioClassificationOutput,
 )
 
-from task_benchmark.tasks.image_classification.task import (
-    ImageClassificationModel,
+from task_benchmark.tasks.audio_classification.task import (
+    AudioClassificationModel,
     Prediction,
 )
 from task_benchmark.implementations.registry import implementation_registry
 
 
-class TaskInferenceImageClassifier(
-    ImageClassificationModel
+class TaskInferenceAudioClassifier(
+    AudioClassificationModel
 ):
 
     def __init__(
@@ -40,7 +40,7 @@ class TaskInferenceImageClassifier(
             self.tasks.append(
                 create_task(
                     backend="transformers",
-                    task_name="image-classification",
+                    task_name="audio-classification",
                     model_name=model_name,
                     model_params={**task_params, "device": device},
                 )
@@ -51,7 +51,7 @@ class TaskInferenceImageClassifier(
             self.tasks.append(
                 create_task(
                     backend="transformers",
-                    task_name="image-classification",
+                    task_name="audio-classification",
                     model_name=model_name,
                     model_params={**task_params, "device": device},
                 )
@@ -64,7 +64,7 @@ class TaskInferenceImageClassifier(
             self.tasks.append(
                 create_task(
                     backend="transformers",
-                    task_name="image-classification",
+                    task_name="audio-classification",
                     model_name=model_name,
                     model_params={**task_params, "device": "cuda"},
                 )
@@ -79,7 +79,7 @@ class TaskInferenceImageClassifier(
             self.tasks.append(
                 create_task(
                     backend="transformers",
-                    task_name="image-classification",
+                    task_name="audio-classification",
                     model_name=model_name,
                     model_params={
                         **task_params,
@@ -93,6 +93,7 @@ class TaskInferenceImageClassifier(
     def predict_batch(
         self,
         inputs: list[bytes],
+        sample_rate: int,
         top_k: int = 5,
     ) -> list[list[Prediction]]:
 
@@ -104,8 +105,9 @@ class TaskInferenceImageClassifier(
             ]
             self.batch_counter += 1
 
-        inp = ImageClassificationInput(
-            images=inputs,
+        inp = AudioClassificationInput(
+            audio=inputs,
+            sample_rate=sample_rate,
             top_k=top_k,
         )
 
@@ -114,7 +116,7 @@ class TaskInferenceImageClassifier(
         )
 
         output = (
-            ImageClassificationOutput
+            AudioClassificationOutput
             .from_inference_response(response)
         )
 
@@ -127,14 +129,14 @@ class TaskInferenceImageClassifier(
                     label=p.label,
                     score=p.score,
                 )
-                for p in per_image
+                for p in per_audio
             ]
-            for per_image in output.results
+            for per_audio in output.results
         ]
 
 
 implementation_registry.register(
-    task="image-classification",
+    task="audio-classification",
     implementation="task-inference",
-    implementation_cls=TaskInferenceImageClassifier,
+    implementation_cls=TaskInferenceAudioClassifier,
 )

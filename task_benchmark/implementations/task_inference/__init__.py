@@ -8,3 +8,6 @@ import importlib
 importlib.import_module(
 	"task_benchmark.implementations.task_inference.image_classification"
 )
+importlib.import_module(
+	"task_benchmark.implementations.task_inference.audio_classification"
+)

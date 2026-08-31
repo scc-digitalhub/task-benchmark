@@ -13,7 +13,7 @@ Current built-in scope:
 
 ```python
 from task_benchmark import evaluate
-from task_benchmark.tasks.image_classification.task import ImageClassificationDataObject
+from task_benchmark.tasks.image_classification import ImageClassificationDataObject
 
 data_object = ImageClassificationDataObject(
     images_path=["/path/to/img1.jpg", "/path/to/img2.jpg"],
@@ -22,9 +22,9 @@ data_object = ImageClassificationDataObject(
 
 report = evaluate(
     task="image-classification",
-    implementation="my-custom",
+    implementation="task-inference",
     data_object=data_object,
-    implementation_import_path="my_package.my_module",
+    model_name="google/vit-base-patch16-224",
     device="cpu",
 )
 ```
@@ -32,7 +32,7 @@ report = evaluate(
 ### Parameters
 
 Required:
-- `task`: task name (currently `image-classification`)
+- `task`: task name (currently supported: `image-classification`, `audio-classification`)
 - `implementation`: implementation name (for example `task-inference` or a custom one)
 - `data_object`: task-specific input data object
 
@@ -41,12 +41,26 @@ Optional common:
 - `report_path`: save JSON report to disk
 - `device`: execution device (for example `cpu` or `cuda`)
 
-Task/implementation-specific kwargs (image classification):
+Task/implementation-specific kwargs (an example for image classification):
 - `model_name`: model id for implementations that need it (required by `task-inference`)
+- `model_params`: extra constructor parameters for `task-inference`; the selected `device` overrides its `device` entry
 - `batch_size`: batch size (default `8`)
 - `implementation_import_path`: optional module path to import before lookup (used to trigger self-registration for external implementations)
 
-## Input format (image-classification)
+For example, pass a backend-specific model option through `model_params`:
+
+```python
+report = evaluate(
+    task="image-classification",
+    implementation="task-inference",
+    data_object=data_object,
+    model_name="google/vit-base-patch16-224",
+    device="cpu",
+    model_params={"revision": "main"},
+)
+```
+
+## Input format (an example for image-classification)
 
 The image-classification task expects a data object with:
 - `images_path`: list of image file paths
