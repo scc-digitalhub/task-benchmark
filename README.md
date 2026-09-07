@@ -4,7 +4,7 @@
 
 Current built-in scope:
 - Tasks: `image-classification`, more to be added
-- Built-in implementation: `task-inference`
+- Built-in implementations: `task-inference`, `open-inference`
 
 
 
@@ -46,6 +46,18 @@ Task/implementation-specific kwargs (an example for image classification):
 - `model_params`: extra constructor parameters for `task-inference`; the selected `device` overrides its `device` entry
 - `batch_size`: batch size (default `8`)
 - `implementation_import_path`: optional module path to import before lookup (used to trigger self-registration for external implementations)
+
+The `open-inference` image-classification implementation sends batches to an OpenInference v2 HTTP server. Pass the server model name as `model_name` and configure the endpoint with `model_params`:
+
+```python
+report = evaluate(
+    task="image-classification",
+    implementation="open-inference",
+    data_object=data_object,
+    model_name="google/vit-base-patch16-224",
+    model_params={"base_url": "http://localhost:8080", "timeout": 60},
+)
+```
 
 For example, pass a backend-specific model option through `model_params`:
 

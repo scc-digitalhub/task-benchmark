@@ -6,6 +6,22 @@ Run the built-in `task-inference` integration with temporary PNG inputs:
 .venv/bin/python examples/image_classification/simple_task_inference.py
 ```
 
+Run the OpenInference implementation against a running serverless HTTP server
+(the default endpoint is `http://localhost:8080`):
+
+```sh
+.venv/bin/python examples/image_classification/open_inference.py
+```
+
+Use `OPEN_INFERENCE_BASE_URL` and `OPEN_INFERENCE_MODEL` to target another
+server or model:
+
+```sh
+OPEN_INFERENCE_BASE_URL=http://localhost:8080 \
+OPEN_INFERENCE_MODEL=google/vit-base-patch16-224 \
+.venv/bin/python examples/image_classification/open_inference.py
+```
+
 `always_first_class.py` defines and registers an in-process baseline that predicts the alphabetically first label. `most_common.py` loads the self-registering baseline in `my_custom_model/` through `implementation_import_path`.
 
 ```sh

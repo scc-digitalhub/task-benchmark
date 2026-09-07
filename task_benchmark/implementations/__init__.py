@@ -8,5 +8,6 @@ from .registry import implementation_registry
 
 # Import built-in implementations for side-effect registration.
 importlib.import_module("task_benchmark.implementations.task_inference")
+importlib.import_module("task_benchmark.implementations.open_inference")
 
 __all__ = ["implementation_registry"]
