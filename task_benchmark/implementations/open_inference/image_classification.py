@@ -99,34 +99,64 @@ class OpenInferenceImageClassifier(ImageClassificationModel):
         batch_size: int,
         top_k: int,
     ) -> list[list[Prediction]]:
+        outputs_raw = response_payload.get("outputs")
+        if outputs_raw is None:
+            raise RuntimeError(
+                "OpenInference server returned no outputs. "
+                "Check that the model endpoint is healthy and the input image is valid."
+            )
+
         outputs = {
             output.get("name"): output.get("data")
-            for output in response_payload.get("outputs", [])
+            for output in outputs_raw
             if isinstance(output, dict)
         }
         labels = outputs.get("labels")
         scores = outputs.get("scores")
+        if labels is None and outputs.get("label") is not None:
+            labels = outputs.get("label")
+        if scores is None and outputs.get("score") is not None:
+            scores = outputs.get("score")
+
+        if labels is None or scores is None:
+            raise RuntimeError(
+                "OpenInference response must contain label(s)/score(s) fields"
+            )
+
         if not isinstance(labels, list) or not isinstance(scores, list):
-            raise RuntimeError("OpenInference response must contain labels and scores")
+            raise RuntimeError("OpenInference labels and scores must be list-valued")
+
+        if len(labels) != batch_size and len(labels) == 1 and batch_size > 1:
+            labels = labels * batch_size
+        if len(scores) != batch_size and len(scores) == 1 and batch_size > 1:
+            scores = scores * batch_size
         if len(labels) != batch_size or len(scores) != batch_size:
             raise RuntimeError("OpenInference response batch size does not match request")
 
         predictions: list[list[Prediction]] = []
-        for image_labels, image_scores in zip(labels, scores):
+        for image_idx, (image_labels, image_scores) in enumerate(zip(labels, scores)):
             if isinstance(image_labels, str):
                 try:
                     image_labels = json.loads(image_labels)
                 except json.JSONDecodeError as exc:
                     raise RuntimeError("OpenInference labels are not valid JSON") from exc
-            if not isinstance(image_labels, list) or not isinstance(image_scores, list):
-                raise RuntimeError("OpenInference labels and scores must be per-image lists")
+
+            if not isinstance(image_labels, list):
+                image_labels = [image_labels]
+            if not isinstance(image_scores, list):
+                image_scores = [image_scores]
             if len(image_labels) != len(image_scores):
-                raise RuntimeError("OpenInference labels and scores are misaligned")
+                raise RuntimeError(
+                    f"OpenInference labels and scores are misaligned for item {image_idx}"
+                )
 
             predictions.append(
                 [
                     Prediction(label=str(label), score=float(score))
-                    for label, score in zip(image_labels[:top_k], image_scores[:top_k])
+                    for label, score in zip(
+                        image_labels[:top_k],
+                        image_scores[:top_k],
+                    )
                 ]
             )
 

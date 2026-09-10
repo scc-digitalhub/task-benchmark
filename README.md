@@ -42,8 +42,8 @@ Optional common:
 - `device`: execution device (for example `cpu` or `cuda`)
 
 Task/implementation-specific kwargs (an example for image classification):
-- `model_name`: model id for implementations that need it (required by `task-inference`)
-- `model_params`: extra constructor parameters for `task-inference`; the selected `device` overrides its `device` entry
+- `model_name`: model id for `task-inference` or the model endpoint name for `open-inference`
+- `model_params`: extra constructor parameters for `task-inference`, or `base_url` and optional `timeout` for `open-inference`
 - `batch_size`: batch size (default `8`)
 - `implementation_import_path`: optional module path to import before lookup (used to trigger self-registration for external implementations)
 
@@ -58,6 +58,11 @@ report = evaluate(
     model_params={"base_url": "http://localhost:8080", "timeout": 60},
 )
 ```
+
+The same `open-inference` implementation name supports audio classification.
+Its client sends raw float32 PCM bytes and the data object's `sample_rate` to
+the server. Self-contained image and audio server examples are listed in
+[examples/README.md](examples/README.md).
 
 For example, pass a backend-specific model option through `model_params`:
 

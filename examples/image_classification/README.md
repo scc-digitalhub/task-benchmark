@@ -6,11 +6,17 @@ Run the built-in `task-inference` integration with temporary PNG inputs:
 .venv/bin/python examples/image_classification/simple_task_inference.py
 ```
 
-Run the OpenInference implementation against a running serverless HTTP server
-(the default endpoint is `http://localhost:8080`):
+Run the self-contained OpenInference implementation (default endpoint:
+`http://localhost:8080`):
 
 ```sh
-.venv/bin/python examples/image_classification/open_inference.py
+docker compose -f examples/image_classification/open_inference_simple/docker-compose.yml up --build
+```
+
+Wait for `Serving on http://0.0.0.0:8080`, then run the client in another terminal:
+
+```sh
+.venv/bin/python examples/image_classification/open_inference_simple/open_inference.py
 ```
 
 Use `OPEN_INFERENCE_BASE_URL` and `OPEN_INFERENCE_MODEL` to target another
@@ -19,8 +25,10 @@ server or model:
 ```sh
 OPEN_INFERENCE_BASE_URL=http://localhost:8080 \
 OPEN_INFERENCE_MODEL=google/vit-base-patch16-224 \
-.venv/bin/python examples/image_classification/open_inference.py
+.venv/bin/python examples/image_classification/open_inference_simple/open_inference.py
 ```
+
+For a real dataset run, see [the OpenInference ImageNet-1000 example](open_inference_imagenet/README.md).
 
 `always_first_class.py` defines and registers an in-process baseline that predicts the alphabetically first label. `most_common.py` loads the self-registering baseline in `my_custom_model/` through `implementation_import_path`.
 

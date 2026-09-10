@@ -1,3 +1,6 @@
+See [the OpenInference SUPERB-KS example](open_inference_superb_ks/README.md)
+to run a self-contained local audio-classification server and benchmark client.
+
 # Audio Classification Examples
 
 Run the self-contained `task-inference` example with generated silent PCM audio:

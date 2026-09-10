@@ -1,0 +1,18 @@
+services:
+  open-inference-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      OPEN_INFERENCE_MODEL: google/vit-base-patch16-224
+      OPEN_INFERENCE_HOST: 0.0.0.0
+      OPEN_INFERENCE_PORT: "8080"
+      OPEN_INFERENCE_DEVICE: cpu
+      HF_HUB_DISABLE_XET: "1"
+    volumes:
+      - open_inference_model_cache:/root/.cache/huggingface
+
+volumes:
+  open_inference_model_cache:

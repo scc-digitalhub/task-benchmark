@@ -1,17 +1,19 @@
+import io
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
+from PIL import Image
 
 from task_benchmark import evaluate
 from task_benchmark.tasks.image_classification import ImageClassificationDataObject
 
 
-MINIMAL_PNG = (
-    b"\x89PNG\r\n\x1a\n"
-    b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
-    b"\x00\x00\x00\x0bIDATx\x9cc`\x00\x02\x00\x00\x05\x00\x01\r\n-\xb4"
-    b"\x00\x00\x00\x00IEND\xaeB`\x82"
-)
+def make_valid_png() -> bytes:
+    image = Image.new("RGB", (224, 224), color="red")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 if __name__ == "__main__":
@@ -20,8 +22,9 @@ if __name__ == "__main__":
         inputs_dir = tmp_path / "images"
         inputs_dir.mkdir(parents=True, exist_ok=True)
 
-        (inputs_dir / "img1.png").write_bytes(MINIMAL_PNG)
-        (inputs_dir / "img2.png").write_bytes(MINIMAL_PNG)
+        valid_png = make_valid_png()
+        (inputs_dir / "img1.png").write_bytes(valid_png)
+        (inputs_dir / "img2.png").write_bytes(valid_png)
 
         data_object = ImageClassificationDataObject(
             images_path=[
