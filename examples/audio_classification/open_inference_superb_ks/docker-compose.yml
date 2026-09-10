@@ -1,0 +1,14 @@
+services:
+  open-inference-superb-ks-server:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      OPEN_INFERENCE_MODEL: superb/wav2vec2-base-superb-ks
+      OPEN_INFERENCE_DEVICE: cpu
+      HF_HUB_DISABLE_XET: "1"
+    volumes:
+      - open_inference_superb_ks_model_cache:/root/.cache/huggingface
+
+volumes:
+  open_inference_superb_ks_model_cache:

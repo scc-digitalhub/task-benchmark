@@ -1,0 +1,3 @@
+model_name,top1_accuracy,top5_accuracy,report_path
+microsoft/cvt-13-384,0.384,0.608,/Users/gosha/Work/FBK/repos/task-benchmark/examples/imagenet-1000/reports/report_microsoft__cvt-13-384.json
+facebook/convnext-base-384-22k-1k,0.589,0.83,/Users/gosha/Work/FBK/repos/task-benchmark/examples/imagenet-1000/reports/report_facebook__convnext-base-384-22k-1k.json
