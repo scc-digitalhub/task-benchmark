@@ -6,6 +6,19 @@ Run the built-in `task-inference` integration with temporary PNG inputs:
 .venv/bin/python examples/image_classification/simple_task_inference.py
 ```
 
+Run the Hugging Face dataset and Transformers example (installs the optional
+`datasets` dependency if needed):
+
+```sh
+python -m pip install -e ".[huggingface]"
+python examples/image_classification/huggingface/huggingface_image_classification.py
+```
+
+By default this loads five samples from CIFAR-10 and runs a CIFAR-10 fine-tuned
+ViT model. Override `HF_DATASET_ID`, `HF_MODEL_ID`, `HF_DATASET_SPLIT`,
+`HF_CACHE_DIR`, `HF_MAX_SAMPLES`, or `DEVICE` to change the dataset, model, cache,
+sample limit, or execution device.
+
 Run the self-contained OpenInference implementation (default endpoint:
 `http://localhost:8080`):
 

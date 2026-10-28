@@ -11,8 +11,10 @@ requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [{ name = "DSLab - Fondazione Bruno Kessler" }]
 dependencies = [
+	"pillow",
 	"psutil",
 	"task-inference",
+	"tritonclient[grpc]",
 	"torch",
 	"transformers",
 ]
@@ -20,6 +22,9 @@ dependencies = [
 [project.optional-dependencies]
 digitalhub = [
 	"digitalhub-runtime-python",
+]
+huggingface = [
+	"datasets",
 ]
 
 [tool.setuptools]
