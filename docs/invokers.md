@@ -20,6 +20,17 @@ Inference v2 services.
 
 ## Hugging Face Image Classification
 
+`ImageClassificationInvoker` extends `Invoker[Tensor, Tensor]` and adds the
+abstract method `label_for(class_id: int) -> str`. Import this base from
+`task_benchmark.implementations.invoker.image_classification` to implement a
+custom image classifier. `HuggingFaceImageClassificationInvoker` implements
+this contract.
+
+`Top1ImageClassificationEvaluator` accepts an
+`ImageClassificationDataLoader` and an `ImageClassificationInvoker`, rather
+than depending on Hugging Face implementations. It compares the top-1 label
+from `label_for()` with the ground truth returned by `labels_for(image_id)`.
+
 `HuggingFaceImageClassificationInvoker` loads an image processor and
 classification model using Transformers `from_pretrained`. `model_name` can be
 a Hub model ID or a local model directory. The processor applies the
@@ -125,3 +136,56 @@ normalization remain the caller's responsibility.
 HTTP uses Python's standard-library `urllib`. gRPC requires the
 `tritonclient[grpc]` project dependency. `close()` closes the gRPC client and
 has no effect for HTTP.
+
+## Open Inference Image Classification Adapter
+
+`OpenInferenceImageClassificationInvoker` implements `ImageClassificationInvoker`
+by wrapping an `OpenInferenceInvoker`. Configure the input name, output name,
+and the complete index-to-label mapping in model output order:
+
+```python
+from task_benchmark.implementations.invoker.open_inference import OpenInferenceInvoker
+from task_benchmark.implementations.invoker.image_classification import (
+    OpenInferenceImageClassificationInvoker,
+)
+from task_benchmark.implementations.evaluator.image_classification import (
+    Top1ImageClassificationEvaluator,
+)
+
+client = OpenInferenceInvoker("http://localhost:8000/v2/models/my-model/infer")
+classifier = OpenInferenceImageClassificationInvoker(
+    invoker=client,
+    input_name="pixels",
+    output_name="scores",
+    labels={0: "cat", 1: "dog"},
+)
+evaluator = Top1ImageClassificationEvaluator(loader, classifier)
+try:
+    image_id, image = next(loader)
+    # Example for a model expecting NCHW RGB values in [0, 1] at this image size.
+    # Apply any required resize or normalization before invoking the classifier.
+    scores = classifier.invoke(image.unsqueeze(0))
+    score = evaluator.evaluate(image_id, scores)
+finally:
+    classifier.close()
+```
+
+Here `loader` is an initialized `ImageClassificationDataLoader`, for example a
+local-store or Hugging Face loader. The model must accept a single named input;
+its other outputs are ignored. Input preprocessing and batch dimensions are
+not inferred from the protocol.
+
+The selected output must be finite floating-point logits or probabilities of
+shape `[classes]` or `[1, classes]`. The adapter returns `[1, classes]` without
+changing the scores. Class IDs must be consecutive integers starting at zero,
+and the number of scores must match the mapping. Outputs containing only class
+IDs, labels, embeddings, or multiple images are not automatically converted.
+The configured output must semantically represent class scores; the adapter
+cannot infer this meaning from the tensor alone.
+
+`Top1ImageClassificationEvaluator`, in the `top1` module, replaces the former
+`HuggingFaceImageClassificationEvaluator`. It returns `1.0` if the highest-scoring
+class matches any annotation, otherwise `0.0`. Label matching ignores case and
+surrounding whitespace, not synonyms. Both invoker implementations can use this
+evaluator. The mean of per-image scores is top-1 accuracy, not model confidence
+or a multi-label precision/recall/F1 score.

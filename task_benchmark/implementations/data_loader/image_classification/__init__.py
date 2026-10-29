@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .image_classification import ImageClassificationDataLoader
+from .base_data_loader import ImageClassificationDataLoader
+from .local_store import LocalStoreImageClassificationDataLoader
 from .huggingface import HuggingFaceImageClassificationDataLoader
 
 __all__ = [
-	"HuggingFaceImageClassificationDataLoader",
 	"ImageClassificationDataLoader",
+	"HuggingFaceImageClassificationDataLoader",
+	"LocalStoreImageClassificationDataLoader",
 ]

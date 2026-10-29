@@ -2,6 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .image_classification import HuggingFaceImageClassificationInvoker
+from .base_invoker import ImageClassificationInvoker
+from .huggingface import HuggingFaceImageClassificationInvoker
+from .open_inference import OpenInferenceImageClassificationInvoker
 
-__all__ = ["HuggingFaceImageClassificationInvoker"]
+__all__ = [
+	"ImageClassificationInvoker",
+	"HuggingFaceImageClassificationInvoker",
+	"OpenInferenceImageClassificationInvoker",
+]

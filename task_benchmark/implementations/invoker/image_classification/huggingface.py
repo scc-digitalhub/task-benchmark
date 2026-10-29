@@ -10,10 +10,12 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from task_benchmark.implementations.invoker.base_invoker import Invoker
+from task_benchmark.implementations.invoker.image_classification.base_invoker import (
+    ImageClassificationInvoker,
+)
 
 
-class HuggingFaceImageClassificationInvoker(Invoker[Tensor, Tensor]):
+class HuggingFaceImageClassificationInvoker(ImageClassificationInvoker):
     """Run Hugging Face image-classification models on input image tensors.
 
     ``model_name`` can be a Hugging Face Hub model ID or a local model path.
@@ -75,6 +77,7 @@ class HuggingFaceImageClassificationInvoker(Invoker[Tensor, Tensor]):
         model_inputs = self.processor(
             images=test_data.detach().cpu(),
             return_tensors="pt",
+            do_rescale=False,
         )
         model_inputs = {
             name: value.to(self.device) if isinstance(value, Tensor) else value

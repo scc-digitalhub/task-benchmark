@@ -14,10 +14,12 @@ import torch
 from PIL import Image
 from torch import Tensor
 
-from task_benchmark.implementations.data_loader.data_loader import DataLoader
+from task_benchmark.implementations.data_loader.image_classification.base_data_loader import (
+    ImageClassificationDataLoader,
+)
 
 
-class HuggingFaceImageClassificationDataLoader(DataLoader):
+class HuggingFaceImageClassificationDataLoader(ImageClassificationDataLoader):
     """Iterate over an image-classification split from Hugging Face Datasets.
 
     ``local_path`` is used as the Hugging Face cache directory. Configure

@@ -21,7 +21,7 @@ IMPLEMENTATIONS_DIR = PROJECT_ROOT / "task_benchmark" / "implementations"
 DATA_LOADER_DIR = IMPLEMENTATIONS_DIR / "data_loader"
 
 
-def load_image_classification_data_loader():
+def load_local_store_image_classification_data_loader():
     package_paths = {
         "task_benchmark": PROJECT_ROOT / "task_benchmark",
         "task_benchmark.implementations": IMPLEMENTATIONS_DIR,
@@ -43,13 +43,11 @@ def load_image_classification_data_loader():
     base_module = importlib.util.module_from_spec(base_spec)
 
     image_loader_spec = importlib.util.spec_from_file_location(
-        "image_classification_loader_under_test",
-        DATA_LOADER_DIR
-        / "image_classification"
-        / "image_classification.py",
+        "local_store_image_classification_loader_under_test",
+        DATA_LOADER_DIR / "image_classification" / "local_store.py",
     )
     if image_loader_spec is None or image_loader_spec.loader is None:
-        raise RuntimeError("Could not load image classification DataLoader")
+        raise RuntimeError("Could not load local-store image classification DataLoader")
     image_loader_module = importlib.util.module_from_spec(image_loader_spec)
 
     with patch.dict(sys.modules, package_modules):
@@ -57,13 +55,26 @@ def load_image_classification_data_loader():
         base_spec.loader.exec_module(base_module)
         image_loader_spec.loader.exec_module(image_loader_module)
 
-    return image_loader_module.ImageClassificationDataLoader
+    return image_loader_module.LocalStoreImageClassificationDataLoader
 
 
-ImageClassificationDataLoader = load_image_classification_data_loader()
+LocalStoreImageClassificationDataLoader = (
+    load_local_store_image_classification_data_loader()
+)
 
 
-class ImageClassificationDataLoaderTests(unittest.TestCase):
+class LocalStoreImageClassificationDataLoaderTests(unittest.TestCase):
+    def test_classifier_requires_labels_for(self) -> None:
+        classifier_base = LocalStoreImageClassificationDataLoader.__bases__[0]
+        self.assertEqual(classifier_base.__name__, "ImageClassificationDataLoader")
+
+        class IncompleteLoader(classifier_base):
+            def next(self) -> tuple[str, torch.Tensor]:
+                raise StopIteration
+
+        with self.assertRaises(TypeError):
+            IncompleteLoader("sample", "./data")
+
     def create_dataset(self, root: Path) -> None:
         (root / "images").mkdir()
         (root / "classes.txt").write_text("cat\ndog\n", encoding="utf-8")
@@ -90,7 +101,7 @@ class ImageClassificationDataLoaderTests(unittest.TestCase):
                 "cat\ndog\npet\n",
                 encoding="utf-8",
             )
-            loader = ImageClassificationDataLoader("sample", str(root))
+            loader = LocalStoreImageClassificationDataLoader("sample", str(root))
 
             image_id, image_tensor = loader.next()
 
@@ -115,7 +126,7 @@ class ImageClassificationDataLoaderTests(unittest.TestCase):
             root = Path(temporary_directory)
             self.create_dataset(root)
             with self.assertRaisesRegex(ValueError, "Unknown class"):
-                ImageClassificationDataLoader("sample", str(root))
+                LocalStoreImageClassificationDataLoader("sample", str(root))
 
 
 if __name__ == "__main__":

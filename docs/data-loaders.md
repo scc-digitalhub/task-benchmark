@@ -22,9 +22,17 @@ next() -> tuple[str, object]
 The first tuple element uniquely identifies a sample; the second contains the
 data to process. The method can raise `StopIteration` when no samples remain.
 
-## ImageClassificationDataLoader
+## Image Classification Contract
 
-`ImageClassificationDataLoader` reads classes, images, and annotations from a
+`ImageClassificationDataLoader` extends `DataLoader` and requires both
+`next() -> tuple[str, Tensor]` and `labels_for(image_id: str) -> tuple[str, ...]`.
+Import it from `task_benchmark.implementations.data_loader.image_classification`
+when implementing a custom image dataset loader. Both the local-store and
+Hugging Face loaders extend this abstract class.
+
+## LocalStoreImageClassificationDataLoader
+
+`LocalStoreImageClassificationDataLoader` reads classes, images, and annotations from a
 local directory. The expected structure is:
 
 ```text
@@ -69,10 +77,10 @@ annotated classes are declared in `classes.txt`.
 
 ```python
 from task_benchmark.implementations.data_loader.image_classification import (
-    ImageClassificationDataLoader,
+    LocalStoreImageClassificationDataLoader,
 )
 
-loader = ImageClassificationDataLoader(
+loader = LocalStoreImageClassificationDataLoader(
     dataset_id="validation-set",
     local_path="./dataset",
 )

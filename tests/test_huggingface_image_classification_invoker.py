@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 IMPLEMENTATIONS_DIR = PROJECT_ROOT / "task_benchmark" / "implementations"
 INVOKER_PACKAGE_DIR = IMPLEMENTATIONS_DIR / "invoker"
 INVOKER_PATH = (
-    INVOKER_PACKAGE_DIR / "image_classification" / "image_classification.py"
+    INVOKER_PACKAGE_DIR / "image_classification" / "huggingface.py"
 )
 
 
@@ -70,8 +70,19 @@ HuggingFaceImageClassificationInvoker = (
 class HuggingFaceImageClassificationInvokerTests(unittest.TestCase):
     def test_inherits_from_generic_invoker(self) -> None:
         self.assertTrue(
-            issubclass(HuggingFaceImageClassificationInvoker, INVOKER_MODULE.Invoker)
+            issubclass(
+                HuggingFaceImageClassificationInvoker,
+                INVOKER_MODULE.ImageClassificationInvoker,
+            )
         )
+
+    def test_classifier_requires_label_for(self) -> None:
+        class IncompleteInvoker(INVOKER_MODULE.ImageClassificationInvoker):
+            def invoke(self, test_data: torch.Tensor) -> torch.Tensor:
+                return test_data
+
+        with self.assertRaises(TypeError):
+            IncompleteInvoker()
 
     def test_label_for_supports_integer_and_string_mapping_keys(self) -> None:
         processor = Mock()
@@ -138,6 +149,7 @@ class HuggingFaceImageClassificationInvokerTests(unittest.TestCase):
         processor_call = processor.call_args.kwargs
         self.assertEqual(processor_call["images"].device.type, "cpu")
         self.assertEqual(processor_call["return_tensors"], "pt")
+        self.assertIs(processor_call["do_rescale"], False)
         model.assert_called_once_with(**processed_inputs)
         self.assertIsInstance(result, torch.Tensor)
         self.assertIs(result, expected_logits)

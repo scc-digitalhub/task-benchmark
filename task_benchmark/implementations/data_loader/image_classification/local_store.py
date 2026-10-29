@@ -11,10 +11,12 @@ import torch
 from PIL import Image
 from torch import Tensor
 
-from task_benchmark.implementations.data_loader.data_loader import DataLoader
+from task_benchmark.implementations.data_loader.image_classification.base_data_loader import (
+    ImageClassificationDataLoader,
+)
 
 
-class ImageClassificationDataLoader(DataLoader):
+class LocalStoreImageClassificationDataLoader(ImageClassificationDataLoader):
     """Load named RGB images and their class annotations from a dataset folder.
 
     The folder must contain ``classes.txt`` (one class per line),
