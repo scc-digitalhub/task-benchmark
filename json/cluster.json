@@ -1,0 +1,90 @@
+{ 
+	"tenant": "TENANT1",
+	"nodes": [
+	{
+		"profile": "NUC",
+		"name": "Mini PC",
+		"target": ["x86", "vulkan"],
+		"gpu": {
+			"name": "Radeon 8050S",
+			"freq": "1.2GHz",
+			"ram": "64GiB",
+			"num": 1,
+			"cores": 32
+		},
+		"cpu": {
+			"name": "AMD Ryzen AI Max PRO 390 ",
+			"freq": "3.2GHz",
+			"ram": "64GiB",
+			"num": 1,
+			"cores": 12
+		}, 
+		"storage": {
+			"type": "NVMe",
+			"dimension": "1024GB"
+		},
+		"bandwidth": {
+			"type": "Ethernet",
+			"dimension": "2GB"
+		},
+		"labels": ["prop1", "prop2"]
+	},		
+	{
+		"profile": "JetsonOrin",
+		"name": "Jetson Orin NX",
+		"target": ["arm", "cuda"],
+		"gpu": {
+			"name": "1024-core NVIDIA Ampere",
+			"freq": "1.1GHz",
+			"ram": "16GB",
+			"num": 1,
+			"cores": 1024
+		},
+		"cpu": {
+			"name": "8-core Arm",
+			"freq": "2.2GHz",
+			"ram": "16GB",
+			"num": 1,
+			"cores": 8
+		}, 
+		"storage": {
+			"type": "NVMe",
+			"dimension": "64GB"
+		},
+		"bandwidth": {
+			"type": "Ethernet",
+			"dimension": "1GB"
+		},
+		"labels": ["prop1", "prop2"]
+	},
+	{
+		"profile": "RaspberryPi5",
+		"name": "Raspberry Pi 5",
+		"target": ["arm", "opengl", "vulkan"],
+		"gpu": {
+			"name": "VideoCore VII",
+			"freq": "600MHz",
+			"ram": "4GB",
+			"num": 1,
+			"cores": 12
+		},
+		"cpu": {
+			"name": "Arm Cortex-A76",
+			"freq": "2.4GHz",
+			"ram": "4GB",
+			"num": 1,
+			"cores": 4
+		}, 
+		"storage": {
+			"type": "SD Card",
+			"dimension": "32GB"
+		},
+		"bandwidth": {
+			"type": "Ethernet",
+			"dimension": "1GB"
+		},
+		"labels": ["prop1", "prop2"]
+	}
+	]
+}
+

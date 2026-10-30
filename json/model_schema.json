@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Model Configuration Schema",
+  "type": "object",
+  "required": ["type", "task", "testDataset", "testbed"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "Model type (e.g., 'ONNX')"
+    },
+    "task": {
+      "type": "string",
+      "description": "Model task (e.g., 'image_classification')"
+    },
+    "testDataset": {
+      "type": "string",
+      "description": "Dataset used for testing (e.g., 'ImageNet')"
+    },
+    "testbed": {
+      "type": "array",
+      "description": "List of testbed configurations",
+      "items": {
+        "type": "object",
+        "required": ["profile", "target", "service", "params", "resources", "avgInferenceTime", "avgThroughput", "avgInputSize", "avgMemory", "avgConsumption", "avgAccuracy"],
+        "properties": {
+          "profile": {
+            "type": "string",
+            "description": "Hardware profile identifier (e.g., 'JetsonOrin')"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target compute platform (e.g., 'cuda', 'arm')"
+          },
+          "service": {
+            "type": "string",
+            "description": "Service identifier"
+          },
+          "params": {
+            "type": "object",
+            "description": "Generic, implementation-specific parameters"
+          },
+          "resources": {
+            "type": "object",
+            "description": "Generic, implementation-specific resource requirements"
+          },
+          "avgInferenceTime": {
+            "type": "string",
+            "description": "Average inference time (e.g., '10ms')"
+          },
+          "avgThroughput": {
+            "type": "number",
+            "description": "Average throughput (e.g., 100 inferences/s)"
+          },
+          "avgInputSize": {
+            "type": "string",
+            "description": "Average input size (e.g., '512B')"
+          },
+          "avgMemory": {
+            "type": "string",
+            "description": "Average memory usage (e.g., '1024MB')"
+          },
+          "avgConsumption": {
+            "type": "string",
+            "description": "Average power consumption (e.g., '50W')"
+          },
+          "avgAccuracy": {
+            "type": "number",
+            "description": "Average accuracy (e.g., 0.89)"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

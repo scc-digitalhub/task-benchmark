@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Service Metrics Schema",
+  "type": "object",
+  "required": ["service_id", "window_from", "window_to", "metrics"],
+  "properties": {
+    "service_id": {
+      "type": "string",
+      "description": "Identifier of the measured service or pod"
+    },
+    "window_from": {
+      "type": "integer",
+      "description": "Start of the measurement window as a Unix timestamp"
+    },
+    "window_to": {
+      "type": "integer",
+      "description": "End of the measurement window as a Unix timestamp"
+    },
+    "metrics": {
+      "type": "array",
+      "description": "Measurements collected for the service",
+      "items": {
+        "type": "object",
+        "required": ["metric"],
+        "properties": {
+          "metric": {
+            "type": "object",
+            "required": ["name", "unit", "values", "summary"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Metric name, such as cpu or memory"
+              },
+              "unit": {
+                "type": "string",
+                "description": "Unit associated with the metric values"
+              },
+              "values": {
+                "type": "array",
+                "description": "Time series values for the measurement window",
+                "items": {
+                  "type": "object",
+                  "required": ["timestamp", "value"],
+                  "properties": {
+                    "timestamp": {
+                      "type": "integer",
+                      "description": "Measurement timestamp as a Unix timestamp"
+                    },
+                    "value": {
+                      "type": "number",
+                      "description": "Measurement value"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "summary": {
+                "type": "array",
+                "description": "Aggregated values such as avg, max, and min",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "value"],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Summary statistic name"
+                    },
+                    "value": {
+                      "type": "number",
+                      "description": "Aggregated measurement value"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

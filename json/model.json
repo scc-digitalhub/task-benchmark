@@ -1,0 +1,44 @@
+{
+    "type": "ONNX",
+		"task": "image_classification",
+		"testDataset": "ImageNet",
+    "testbed": [{
+        "profile": "NUC",
+        "target": "vulkan",
+        "service": "service_id1",
+				"params": {"mode":"RGB", "size":"512x512"},
+				"resources": {"mem": "1GiB", "disk": "1GiB"},
+        "avgInferenceTime": "20ms",
+        "avgThroughput": 18.5,
+        "avgInputSize": "512B",
+        "avgMemory": "1024MB",
+        "avgConsumption": "50W",
+        "avgAccuracy": 0.9
+      },
+      {
+        "profile": "JetsonOrin",
+        "target": "cuda",
+        "service": "service_id2",
+				"params": {"mode":"RGB", "size":"512x512"},
+				"resources": {"mem": "1GiB", "disk": "1GiB"},
+        "avgInferenceTime": "10ms",
+        "avgThroughput": 26.5,
+        "avgInputSize": "512B",
+        "avgMemory": "1024MB",
+        "avgConsumption": "50W",
+        "avgAccuracy": 0.9
+    },
+    {
+        "profile": "RaspberryPi5",
+        "target": "arm",
+        "service": "service_id3",
+				"params": {"mode":"RGB", "size":"512x512"},
+				"resources": {"mem": "1GiB", "disk": "1GiB"},
+        "avgInferenceTime": "30ms",
+        "avgThroughput": 12.5,
+        "avgInputSize": "512B",
+        "avgMemory": "1024MB",
+        "avgConsumption": "50W",
+        "avgAccuracy": 0.8
+    }]
+}

@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cluster Configuration Schema",
+  "type": "object",
+  "required": ["tenant", "nodes"],
+  "properties": {
+    "tenant": {
+      "type": "string",
+      "description": "Tenant identifier"
+    },
+    "nodes": {
+      "type": "array",
+      "description": "List of compute nodes in the cluster",
+      "items": {
+        "type": "object",
+        "required": ["profile", "name", "target"],
+        "properties": {
+          "profile": {
+            "type": "string",
+            "description": "Profile identifier for the node"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name of the node"
+          },
+          "target": {
+            "type": "array",
+            "description": "List of target deployment or system identifiers (e.g., 'arm', 'cuda')",
+            "items": {
+              "type": "string"
+            }
+          },
+          "gpu": {
+            "type": "object",
+            "description": "GPU specifications",
+            "required": ["name", "freq", "ram"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "GPU model name"
+              },
+              "freq": {
+                "type": "string",
+                "description": "GPU frequency (e.g., '1.1GHz')"
+              },
+              "ram": {
+                "type": "string",
+                "description": "GPU memory (e.g., '16GB')"
+              },
+              "num": {
+                "type": "integer",
+                "description": "Number of GPUs"
+              }
+            },
+            "additionalProperties": false
+          },
+          "cpu": {
+            "type": "object",
+            "description": "CPU specifications",
+            "required": ["name", "freq", "ram"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "CPU model name"
+              },
+              "freq": {
+                "type": "string",
+                "description": "CPU frequency (e.g., '2.2GHz')"
+              },
+              "ram": {
+                "type": "string",
+                "description": "CPU memory (e.g., '16GB')"
+              },
+              "num": {
+                "type": "integer",
+                "description": "Number of CPUs"
+              },
+              "cores": {
+                "type": "integer",
+                "description": "Number of CPU cores"
+              }
+            },
+            "additionalProperties": false
+          },
+          "storage": {
+            "type": "object",
+            "description": "Storage specifications",
+            "required": ["type", "dimension"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Storage type (e.g., 'NVMe')"
+              },
+              "dimension": {
+                "type": "string",
+                "description": "Storage capacity (e.g., '64GB')"
+              }
+            },
+            "additionalProperties": false
+          },
+          "bandwidth": {
+            "type": "object",
+            "description": "Network bandwidth specifications",
+            "required": ["type", "dimension"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Network type (e.g., 'Ethernet')"
+              },
+              "dimension": {
+                "type": "string",
+                "description": "Bandwidth capacity (e.g., '100GB')"
+              }
+            },
+            "additionalProperties": false
+          },
+          "labels": {
+            "type": "array",
+            "description": "lists of implementation-specific custom properties",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
