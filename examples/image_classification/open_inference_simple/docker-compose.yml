@@ -4,11 +4,11 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "9090:9090"
     environment:
       OPEN_INFERENCE_MODEL: ${OPEN_INFERENCE_MODEL:-nateraw/vit-base-patch16-224-cifar10}
       OPEN_INFERENCE_HOST: 0.0.0.0
-      OPEN_INFERENCE_PORT: "8080"
+      OPEN_INFERENCE_PORT: "9090"
       OPEN_INFERENCE_DEVICE: cpu
       HF_HUB_DISABLE_XET: "1"
     volumes:

@@ -23,7 +23,7 @@ def main() -> None:
         "nateraw/vit-base-patch16-224-cifar10",
     )
     cache_dir = Path(os.getenv("HF_CACHE_DIR", ".cache/huggingface")).expanduser()
-    max_samples = int(os.getenv("HF_MAX_SAMPLES", "50"))
+    max_samples = int(os.getenv("HF_MAX_SAMPLES", "150"))
     device = os.getenv(
         "DEVICE",
         "cuda" if torch.cuda.is_available() else "cpu",

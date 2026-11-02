@@ -67,12 +67,12 @@ def class_labels(metadata, loader, dataset_id: str) -> dict[int, str]:
 def main() -> None:
     base_url = os.getenv(
         "OPEN_INFERENCE_BASE_URL",
-        "http://localhost:8080/v2/models/vit-base-patch16-224",
+        "http://localhost:9090/v2/models/vit-base-patch16-224",
     ).rstrip("/").removesuffix("/infer")
     dataset_id = os.getenv("HF_DATASET_ID", "uoft-cs/cifar10")
     default_split = "test" if dataset_id == "uoft-cs/cifar10" else "train"
     default_image_column = "img" if dataset_id == "uoft-cs/cifar10" else "image"
-    max_samples = int(os.getenv("HF_MAX_SAMPLES", "50"))
+    max_samples = int(os.getenv("HF_MAX_SAMPLES", "150"))
     if max_samples < 1:
         raise ValueError("HF_MAX_SAMPLES must be greater than zero")
     with request.urlopen(base_url, timeout=60.0) as response:
