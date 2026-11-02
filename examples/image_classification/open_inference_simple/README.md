@@ -13,7 +13,7 @@ docker compose -f examples/image_classification/open_inference_simple/docker-com
 
 This starts a local HTTP server on:
 
-- http://localhost:8080
+- http://localhost:9090
 - model endpoint: /v2/models/vit-base-patch16-224/infer
 
 The first `--build` installs pinned CPU-compatible Torch and Transformers
@@ -24,18 +24,18 @@ starts should be much faster.
 The Compose setup disables the optional Xet transfer backend because regular
 Hugging Face downloads are more reliable in this local Docker setup.
 
-Wait for `Serving on http://0.0.0.0:8080` before running the benchmark client.
+Wait for `Serving on http://0.0.0.0:9090` before running the benchmark client.
 
 ## Run the benchmark client
 
 ```bash
-.venv/bin/python examples/image_classification/open_inference_simple/open_inference.py
+.venv/bin/python examples/image_classification/open_inference_simple/open_inference_hf.py
 ```
 
 You can override the target server/model with environment variables:
 
 ```bash
-OPEN_INFERENCE_BASE_URL=http://localhost:8080 \
+OPEN_INFERENCE_BASE_URL=http://localhost:9090 \
 OPEN_INFERENCE_MODEL=google/vit-base-patch16-224 \
 OPEN_INFERENCE_MODEL_NAME=vit-base-patch16-224 \
 .venv/bin/python examples/image_classification/open_inference_simple/open_inference.py
