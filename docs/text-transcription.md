@@ -135,3 +135,15 @@ python -m unittest discover -s tests -p test_text_transcription.py -v
 Tests decode generated FLAC bytes and exercise resampling and real JiWER
 evaluation. HF loading and model generation are simulated, so tests require
 the transcription extra but no network or model download.
+
+## Docker and Open Inference V2
+
+The [Whisper HTTP example](../examples/text_transcription/open_inference_simple/README.md)
+runs the same model inside a CPU-only Docker container. Its default inference
+endpoint is `http://localhost:9082/v2/models/whisper-tiny.en/infer`.
+
+`OpenInferenceTextTranscriptionInvoker` implements `TextTranscriptionInvoker`
+using numeric `audio` and `sampling_rate` inputs and a UTF-8 `BYTES` text output.
+It can replace the local Hugging Face invoker without changing the loader or
+`WordErrorRateEvaluator`. This adapter supports HTTP/HTTPS, not gRPC; the
+numeric-tensor `OpenInferenceInvoker` remains unchanged.

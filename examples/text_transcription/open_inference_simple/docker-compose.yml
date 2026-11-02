@@ -1,0 +1,20 @@
+name: text-transcription-open-inference
+
+services:
+  whisper-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${WHISPER_PORT:-9082}:9080"
+    environment:
+      OPEN_INFERENCE_MODEL: ${WHISPER_MODEL:-openai/whisper-tiny.en}
+      OPEN_INFERENCE_MODEL_NAME: whisper-tiny.en
+      OPEN_INFERENCE_HOST: 0.0.0.0
+      OPEN_INFERENCE_PORT: "9080"
+      HF_HUB_DISABLE_XET: "1"
+    volumes:
+      - whisper_model_cache:/home/app/.cache/huggingface
+
+volumes:
+  whisper_model_cache:
