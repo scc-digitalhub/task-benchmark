@@ -26,6 +26,10 @@ class MetricsManagerTests(unittest.TestCase):
         self.assertEqual(manager.collect_metrics("service-2"), expected)
         params = {"start": 1790812923, "filters": {"metric": "cpu"}}
         self.assertEqual(manager.collect_metrics("pod-1", params=params), expected)
+        self.assertEqual(
+            manager.collect_metrics("pod-1", params, window_from=10, window_to=20),
+            expected,
+        )
         self.assertEqual(params, {"start": 1790812923, "filters": {"metric": "cpu"}})
         self.assertEqual(json.loads(json.dumps(manager.collect_metrics("pod-1"))), expected)
 

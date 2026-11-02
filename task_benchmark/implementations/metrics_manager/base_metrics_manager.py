@@ -17,6 +17,17 @@ class MetricsManager(ABC):
         self,
         service_id: str,
         params: dict[str, Any] | None = None,
+        *,
+        window_from: int | None = None,
+        window_to: int | None = None,
     ) -> JSONValue:
-        """Return measurements using optional implementation-specific request parameters."""
+        """Return measurements within optional inclusive Unix timestamp bounds."""
         raise NotImplementedError
+
+    @staticmethod
+    def _validate_window(window_from: int | None, window_to: int | None) -> None:
+        for name, value in (("window_from", window_from), ("window_to", window_to)):
+            if value is not None and type(value) is not int:
+                raise TypeError(f"{name} must be an integer Unix timestamp or None")
+        if window_from is not None and window_to is not None and window_from > window_to:
+            raise ValueError("window_from must not be greater than window_to")

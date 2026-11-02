@@ -26,6 +26,9 @@ digitalhub = [
 huggingface = [
 	"datasets",
 ]
+test = [
+	"jsonschema>=4",
+]
 
 [tool.setuptools]
 

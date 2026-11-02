@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from .base_metrics_manager import JSONValue, MetricsManager
+from .dh_core import DHCoreMetricsManager
 from .mockup import MockupMetricsManager
 
-__all__ = ["JSONValue", "MetricsManager", "MockupMetricsManager"]
+__all__ = ["JSONValue", "MetricsManager", "MockupMetricsManager", "DHCoreMetricsManager"]
