@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     )
 
 
-class Top1ImageClassificationEvaluator(Evaluator):
+class Top1ImageClassificationEvaluator(Evaluator[Tensor]):
     """Score one image's class scores against its dataset annotations.
 
     Return 1.0 when the highest-scoring class matches any annotated label,

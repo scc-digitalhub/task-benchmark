@@ -29,6 +29,12 @@ huggingface = [
 test = [
 	"jsonschema>=4",
 ]
+text-transcription = [
+	"datasets",
+	"soundfile>=0.12",
+	"scipy>=1.10",
+	"jiwer>=4",
+]
 
 [tool.setuptools]
 
