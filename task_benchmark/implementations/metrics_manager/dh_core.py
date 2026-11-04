@@ -82,12 +82,12 @@ class DHCoreMetricsManager(MetricsManager):
                         ]
                     else:
                         summary = []
-                converted.append({"metric": {
+                converted.append({
                     "name": self._text(metric["name"]),
                     "unit": self._text(metric["unit"]),
                     "values": values,
                     "summary": summary,
-                }})
+                })
                 timestamps.extend(point["timestamp"] for point in values)
 
         if not matched:

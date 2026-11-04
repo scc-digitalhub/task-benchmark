@@ -38,7 +38,7 @@ class DHCoreMetricsManagerTests(unittest.TestCase):
         expected_metrics = [metric for entry in entries for metric in entry["metrics"]]
         self.assertEqual(len(result["metrics"]), len(expected_metrics))
         for item, source in zip(result["metrics"], expected_metrics):
-            metric = item["metric"]
+            metric = item
             self.assertEqual(set(metric), {"name", "unit", "values", "summary"})
             self.assertEqual(metric["name"], source["name"])
             self.assertEqual(metric["unit"], source["unit"])
@@ -67,9 +67,9 @@ class DHCoreMetricsManagerTests(unittest.TestCase):
             result = manager.collect_metrics("service-1")
             self.assertEqual(result["window_from"], 10)
             self.assertEqual(result["window_to"], 20)
-            self.assertEqual(result["metrics"][0]["metric"]["summary"],
+            self.assertEqual(result["metrics"][0]["summary"],
                              [{"name": "avg", "value": 0.3}])
-            self.assertNotIn("extra", result["metrics"][0]["metric"]["values"][0])
+            self.assertNotIn("extra", result["metrics"][0]["values"][0])
             self.assertEqual(len(result["metrics"]), 1)
             with self.assertRaisesRegex(ValueError, "No DHCore metrics"):
                 manager.collect_metrics("unknown")
@@ -107,7 +107,7 @@ class DHCoreMetricsManagerTests(unittest.TestCase):
             }]}]), encoding="utf-8")
             manager = DHCoreMetricsManager(path)
             result = manager.collect_metrics("service-1", window_from=20, window_to=30)
-            metric = result["metrics"][0]["metric"]
+            metric = result["metrics"][0]
             self.assertEqual([point["timestamp"] for point in metric["values"]], [20, 30])
             self.assertEqual({item["name"]: item["value"] for item in metric["summary"]},
                              {"sum": 6, "avg": 3, "max": 4, "min": 2})
@@ -118,12 +118,12 @@ class DHCoreMetricsManagerTests(unittest.TestCase):
                 with self.subTest(bounds=bounds):
                     filtered = manager.collect_metrics("service-1", **bounds)
                     self.assertEqual(
-                        [point["timestamp"] for point in filtered["metrics"][0]["metric"]["values"]],
+                        [point["timestamp"] for point in filtered["metrics"][0]["values"]],
                         expected,
                     )
             empty = manager.collect_metrics("service-1", window_from=50, window_to=60)
-            self.assertEqual(empty["metrics"][0]["metric"]["values"], [])
-            self.assertEqual(empty["metrics"][0]["metric"]["summary"], [])
+            self.assertEqual(empty["metrics"][0]["values"], [])
+            self.assertEqual(empty["metrics"][0]["summary"], [])
             schema = json.loads((PROJECT_ROOT / "json" / "metrics_schema.json").read_text())
             Draft7Validator(schema).validate(result)
             Draft7Validator(schema).validate(empty)

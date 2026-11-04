@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-from itertools import islice
-from time import perf_counter
-from typing import Any
 
+from task_benchmark import BenchmarkManager
 from task_benchmark.implementations.data_loader.text_transcription import (
     HuggingFaceTextTranscriptionDataLoader,
 )
@@ -13,9 +11,10 @@ from task_benchmark.implementations.evaluator.text_transcription import WordErro
 from task_benchmark.implementations.invoker.text_transcription import (
     OpenInferenceTextTranscriptionInvoker,
 )
+from task_benchmark.implementations.metrics_manager.base_metrics_manager import JSONValue
 
 
-def main() -> dict[str, Any]:
+def main() -> JSONValue:
     base_url = os.getenv(
         "OPEN_INFERENCE_BASE_URL", "http://localhost:9082/v2/models/whisper-tiny.en"
     ).rstrip("/").removesuffix("/infer")
@@ -35,40 +34,18 @@ def main() -> dict[str, Any]:
         params["name"] = config_name
     loader = HuggingFaceTextTranscriptionDataLoader(
         dataset_id, os.getenv("HF_CACHE_DIR", ".cache/huggingface"), params,
+        max_samples=max_samples,
     )
     invoker = OpenInferenceTextTranscriptionInvoker(f"{base_url}/infer")
     evaluator = WordErrorRateEvaluator(loader)
-    results = []
-    started = perf_counter()
-    for sample_id, audio in islice(loader, max_samples):
-        inference_started = perf_counter()
-        text = invoker.invoke(audio)
-        inference_seconds = perf_counter() - inference_started
-        score = evaluator.evaluate(sample_id, text)
-        wer = evaluator.word_error_rate(sample_id, text)
-        reference = loader.transcript_for(sample_id)
-        print(f"{sample_id}: WER={wer:.3f}, quality_score={score:.3f}")
-        print(f"  reference: {reference}")
-        print(f"  predicted: {text}")
-        results.append({
-            "sample_id": sample_id, "reference": reference, "transcription": text,
-            "wer": wer, "quality_score": score,
-            "audio_seconds": audio.waveform.numel() / audio.sampling_rate,
-            "inference_seconds": inference_seconds,
-        })
-    if not results:
-        raise ValueError("The dataset split contains no samples")
-    report = {
-        "service_url": f"{base_url}/infer", "dataset_id": dataset_id,
-        "samples": len(results),
-        "mean_sample_wer": sum(item["wer"] for item in results) / len(results),
-        "mean_quality_score": sum(item["quality_score"] for item in results) / len(results),
-        "mean_inference_seconds": sum(item["inference_seconds"] for item in results) / len(results),
-        "elapsed_seconds": perf_counter() - started,
-        "results": results,
-    }
-    print(json.dumps(report, indent=2))
-    return report
+    metrics = BenchmarkManager(
+        data_loader=loader,
+        invoker=invoker,
+        evaluator=evaluator,
+        service_id=base_url,
+    ).run_benchmark()
+    print(json.dumps(metrics, indent=2))
+    return metrics
 
 
 if __name__ == "__main__":

@@ -4,64 +4,116 @@
     "window_to": 1790816523,
     "metrics": [
       {
-        "metric": {
-          "name": "cpu",
-          "unit": "seconds",
-          "values": [
-            {
-              "timestamp": 1790812923,
-              "value": 0.0000213494900485668
-            },
-            {
-              "timestamp": 1790813883,
-              "value": 0.00016194623655929296
-            }
-          ],
-          "summary": [
-            {
-              "name": "avg",
-              "value": 0.00016151600559085574
-            },
-            {
-              "name": "max",
-              "value": 0.00018108064516117562
-            },
-            {
-              "name": "min",
-              "value": 0.0000213494900485668
-            }
-          ]          
-        }
+        "name": "cpu",
+        "unit": "seconds",
+        "values": [
+          {
+            "timestamp": 1790812923,
+            "value": 0.0000213494900485668
+          },
+          {
+            "timestamp": 1790813883,
+            "value": 0.00016194623655929296
+          }
+        ],
+        "summary": [
+          {
+            "name": "avg",
+            "value": 0.00016151600559085574
+          },
+          {
+            "name": "max",
+            "value": 0.00018108064516117562
+          },
+          {
+            "name": "min",
+            "value": 0.0000213494900485668
+          }
+        ]          
       },
       {
-        "metric": {
-          "name": "memory",
-          "unit": "bytes",
-          "values": [
-            {
-              "timestamp": 1790812923,
-              "value": 1024
-            },
-            {
-              "timestamp": 1790813883,
-              "value": 2048
-            }
-          ],
-          "summary": [
-            {
-              "name": "avg",
-              "value": 1536
-            },
-            {
-              "name": "max",
-              "value": 2048
-            },
-            {
-              "name": "min",
-              "value": 1024
-            }
-          ]
-        }
+        "name": "memory",
+        "unit": "bytes",
+        "values": [
+          {
+            "timestamp": 1790812923,
+            "value": 1024
+          },
+          {
+            "timestamp": 1790813883,
+            "value": 2048
+          }
+        ],
+        "summary": [
+          {
+            "name": "avg",
+            "value": 1536
+          },
+          {
+            "name": "max",
+            "value": 2048
+          },
+          {
+            "name": "min",
+            "value": 1024
+          }
+        ]
+      },
+      {
+        "name": "inference_time",
+        "unit": "seconds",
+        "values": [
+          {
+            "timestamp": 1790812923,
+            "value": 0.25
+          },
+          {
+            "timestamp": 1790813883,
+            "value": 0.5
+          }
+        ],
+        "summary": [
+          {
+            "name": "avg",
+            "value": 0.375
+          },
+          {
+            "name": "max",
+            "value": 0.5
+          },
+          {
+            "name": "min",
+            "value": 0.25
+          }
+        ]
+      },
+      {
+        "name": "quality_score",
+        "unit": "ratio",
+        "values": [
+          {
+            "timestamp": 1790812923,
+            "value": 0.75
+          },
+          {
+            "timestamp": 1790813883,
+            "value": 0.5
+          }
+        ],
+        "summary": [
+          {
+            "name": "avg",
+            "value": 0.625
+          },
+          {
+            "name": "max",
+            "value": 0.75
+          },
+          {
+            "name": "min",
+            "value": 0.5
+          }
+        ]
       }
     ]
 }

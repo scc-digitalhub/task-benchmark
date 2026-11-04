@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
 import torch
 
+from task_benchmark import BenchmarkManager
 from task_benchmark.implementations.data_loader.image_classification import (
     HuggingFaceImageClassificationDataLoader,
 )
@@ -41,6 +43,7 @@ def main() -> None:
             "image_column": "img",
             "label_column": "label",
         },
+        max_samples=max_samples,
     )
     model_kwargs = {"cache_dir": str(cache_dir)}
     if model_name == "nateraw/vit-base-patch16-224-cifar10":
@@ -60,24 +63,14 @@ def main() -> None:
         processor_kwargs={"cache_dir": str(cache_dir)},
     )
     evaluator = Top1ImageClassificationEvaluator(loader, invoker)
-
-    for sample_index, (image_id, image_tensor) in enumerate(loader):
-        logits = invoker.invoke(image_tensor)
-        score = evaluator.evaluate(image_id, logits)
-        probabilities = logits.softmax(dim=-1)[0]
-        predicted_index = int(probabilities.argmax().item())
-        predicted_label = invoker.label_for(predicted_index)
-        ground_truth = ", ".join(loader.labels_for(image_id))
-        confidence = float(probabilities[predicted_index].item())
-
-        print(
-            f"{image_id}: prediction={predicted_label} "
-            f"(confidence={confidence:.3f}), ground_truth={ground_truth}, "
-            f"top1_score={score:.1f}"
-        )
-
-        if sample_index + 1 >= max_samples:
-            break
+    benchmark_manager = BenchmarkManager(
+        data_loader=loader,
+        invoker=invoker,
+        evaluator=evaluator,
+        service_id=model_name,
+    )
+    metrics = benchmark_manager.run_benchmark()
+    print(json.dumps(metrics, indent=2))
 
 
 if __name__ == "__main__":

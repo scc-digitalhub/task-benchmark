@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 import importlib.util
+import json
 import os
 import sys
 from io import BytesIO
@@ -193,15 +194,22 @@ class TextTranscriptionExampleTests(unittest.TestCase):
         invoker.invoke.return_value = "Hello world!"
         with (
             patch.dict(os.environ, {"HF_MAX_SAMPLES": "1", "DEVICE": "cpu"}, clear=True),
-            patch.object(example, "HuggingFaceTextTranscriptionDataLoader", return_value=loader) as loader_factory,
+            patch.object(
+                example,
+                "HuggingFaceTextTranscriptionDataLoader",
+                return_value=loader,
+            ) as loader_factory,
             patch.object(example, "HuggingFaceTextTranscriptionInvoker", return_value=invoker) as invoker_factory,
-            patch("builtins.print"),
+            patch("builtins.print") as output,
         ):
-            report = example.main()
-        self.assertEqual(report["samples"], 1)
-        self.assertEqual(report["mean_sample_wer"], 0.0)
-        self.assertEqual(report["mean_quality_score"], 1.0)
-        self.assertEqual(report["results"][0]["audio_seconds"], 1.0)
+            metrics = example.main()
+        self.assertEqual(loader_factory.call_args.kwargs["max_samples"], 1)
+        self.assertEqual(
+            [metric["name"] for metric in metrics["metrics"]],
+            ["inference_time", "quality_score"],
+        )
+        self.assertEqual(metrics["metrics"][1]["values"][0]["value"], 1.0)
+        self.assertEqual(json.loads(output.call_args.args[0]), metrics)
         self.assertEqual(loader_factory.call_args.args[2]["name"], "clean")
         self.assertEqual(invoker_factory.call_args.kwargs["model_name"], "openai/whisper-tiny.en")
 

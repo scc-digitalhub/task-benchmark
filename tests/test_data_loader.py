@@ -29,8 +29,15 @@ DataLoader = DATA_LOADER_MODULE.DataLoader
 
 
 class ConcreteDataLoader(DataLoader):
-    def __init__(self, dataset_id: str, local_path: str, params=None) -> None:
-        super().__init__(dataset_id, local_path, params)
+    def __init__(
+        self,
+        dataset_id: str,
+        local_path: str,
+        params=None,
+        *,
+        max_samples: int | None = None,
+    ) -> None:
+        super().__init__(dataset_id, local_path, params, max_samples=max_samples)
         self._consumed = False
 
     def next(self) -> tuple[str, object]:
@@ -38,6 +45,15 @@ class ConcreteDataLoader(DataLoader):
             raise StopIteration
         self._consumed = True
         return "sample", {"value": 1}
+
+
+class MultipleDataLoader(DataLoader):
+    def __init__(self, max_samples: int | None) -> None:
+        super().__init__("dataset", "./data", max_samples=max_samples)
+        self._items = iter((f"sample-{index}", index) for index in range(3))
+
+    def next(self) -> tuple[str, int]:
+        return next(self._items)
 
 
 class DataLoaderTests(unittest.TestCase):
@@ -61,6 +77,28 @@ class DataLoaderTests(unittest.TestCase):
         self.assertEqual(next(loader), ("sample", {"value": 1}))
         with self.assertRaises(StopIteration):
             next(loader)
+
+    def test_base_iterator_respects_max_samples(self) -> None:
+        loader = MultipleDataLoader(max_samples=2)
+
+        self.assertEqual(
+            list(loader),
+            [("sample-0", 0), ("sample-1", 1)],
+        )
+
+    def test_max_samples_must_be_a_positive_integer(self) -> None:
+        for invalid_value in (True, 1.5, "2"):
+            with self.subTest(max_samples=invalid_value):
+                with self.assertRaises(TypeError):
+                    ConcreteDataLoader(
+                        "dataset", "./data", max_samples=invalid_value
+                    )
+        for invalid_value in (0, -1):
+            with self.subTest(max_samples=invalid_value):
+                with self.assertRaises(ValueError):
+                    ConcreteDataLoader(
+                        "dataset", "./data", max_samples=invalid_value
+                    )
 
 
 if __name__ == "__main__":

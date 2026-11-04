@@ -125,13 +125,21 @@ class WhisperV2ServerTests(unittest.TestCase):
                 "OPEN_INFERENCE_BASE_URL": self.base_url + "/v2/models/whisper-tiny.en",
                 "HF_MAX_SAMPLES": "1",
             }, clear=True),
-            patch.object(module, "HuggingFaceTextTranscriptionDataLoader", return_value=DatasetLoader("test", "")),
-            patch("builtins.print"),
+            patch.object(
+                module,
+                "HuggingFaceTextTranscriptionDataLoader",
+                return_value=DatasetLoader("test", ""),
+            ) as loader_factory,
+            patch("builtins.print") as output,
         ):
-            report = module.main()
-        self.assertEqual(report["samples"], 1)
-        self.assertEqual(report["mean_sample_wer"], 0.0)
-        self.assertEqual(report["mean_quality_score"], 1.0)
+            metrics = module.main()
+        self.assertEqual(loader_factory.call_args.kwargs["max_samples"], 1)
+        self.assertEqual(
+            [metric["name"] for metric in metrics["metrics"]],
+            ["inference_time", "quality_score"],
+        )
+        self.assertEqual(metrics["metrics"][1]["values"][0]["value"], 1.0)
+        self.assertEqual(json.loads(output.call_args.args[0]), metrics)
 
 
 if __name__ == "__main__":

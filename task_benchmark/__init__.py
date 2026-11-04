@@ -4,3 +4,7 @@
 
 """task-benchmark package."""
 
+from task_benchmark.benchmark_manager import BenchmarkManager
+
+__all__ = ["BenchmarkManager"]
+

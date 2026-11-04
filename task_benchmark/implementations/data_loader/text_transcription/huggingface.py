@@ -19,8 +19,10 @@ class HuggingFaceTextTranscriptionDataLoader(TextTranscriptionDataLoader):
         dataset_id: str,
         local_path: str,
         params: dict[str, Any] | None = None,
+        *,
+        max_samples: int | None = None,
     ) -> None:
-        super().__init__(dataset_id, local_path, params)
+        super().__init__(dataset_id, local_path, params, max_samples=max_samples)
         if not dataset_id:
             raise ValueError("dataset_id must not be empty")
         options = dict(self.params)

@@ -30,8 +30,18 @@ class LocalStoreImageClassificationDataLoader(ImageClassificationDataLoader):
     :meth:`labels_for` using the image identifier returned by :meth:`next`.
     """
 
-    def __init__(self, dataset_id: str, local_path: str) -> None:
-        super().__init__(dataset_id=dataset_id, local_path=local_path)
+    def __init__(
+        self,
+        dataset_id: str,
+        local_path: str,
+        *,
+        max_samples: int | None = None,
+    ) -> None:
+        super().__init__(
+            dataset_id=dataset_id,
+            local_path=local_path,
+            max_samples=max_samples,
+        )
         self.root = Path(local_path).expanduser().resolve()
         if not self.root.is_dir():
             raise FileNotFoundError(f"Dataset directory does not exist: {self.root}")

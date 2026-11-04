@@ -1,3 +1,5 @@
+name: image-classification-open-inference
+
 services:
   open-inference-server:
     build:

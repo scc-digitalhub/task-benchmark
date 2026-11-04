@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import os
-from itertools import islice
 from pathlib import Path
-from time import perf_counter
 from typing import Any
 from urllib import request
 
+from torch import Tensor
+
+from task_benchmark import BenchmarkManager
 from task_benchmark.implementations.data_loader.image_classification import (
     HuggingFaceImageClassificationDataLoader,
 )
@@ -18,6 +19,15 @@ from task_benchmark.implementations.invoker.image_classification import (
     OpenInferenceImageClassificationInvoker,
 )
 from task_benchmark.implementations.invoker.open_inference import OpenInferenceInvoker
+from task_benchmark.implementations.invoker.base_invoker import Invoker
+
+
+class BatchedImageInvoker(Invoker[Tensor, Tensor]):
+    def __init__(self, invoker: OpenInferenceImageClassificationInvoker) -> None:
+        self.invoker = invoker
+
+    def invoke(self, test_data: Tensor) -> Tensor:
+        return self.invoker.invoke(test_data.unsqueeze(0))
 
 
 def class_labels(metadata, loader, dataset_id: str) -> dict[int, str]:
@@ -88,6 +98,7 @@ def main() -> None:
             "label_column": os.getenv("HF_LABEL_COLUMN", "label"),
             "streaming": True,
         },
+        max_samples=max_samples,
     )
     labels = class_labels(metadata, loader, dataset_id)
     client = OpenInferenceInvoker(f"{base_url}/infer")
@@ -95,24 +106,16 @@ def main() -> None:
         client, input_name="pixel_values", output_name="scores", labels=labels,
     )
     evaluator = Top1ImageClassificationEvaluator(loader, classifier)
-    started = perf_counter()
     try:
-        for image_id, image in islice(loader, max_samples):
-            inference_started = perf_counter()
-            logits = classifier.invoke(image.unsqueeze(0))
-            inference_seconds = perf_counter() - inference_started
-            score = evaluator.evaluate(image_id, logits)
-            probabilities = logits.softmax(dim=-1)[0]
-            predicted_index = int(probabilities.argmax().item())
-            print(
-                f"{image_id}: prediction={classifier.label_for(predicted_index)} "
-                f"(confidence={probabilities[predicted_index].item():.3f}), ground_truth={list(loader.labels_for(image_id))}, "
-                f"top1_score={score:.1f}, inference_seconds={inference_seconds:.3f}"
-            )            
+        metrics = BenchmarkManager(
+            data_loader=loader,
+            invoker=BatchedImageInvoker(classifier),
+            evaluator=evaluator,
+            service_id=base_url,
+        ).run_benchmark()
+        print(json.dumps(metrics, indent=2))
     finally:
         classifier.close()
-    elapsed_seconds = perf_counter() - started
-    print(f"Elapsed seconds: {elapsed_seconds:.3f}")
 
 
 if __name__ == "__main__":

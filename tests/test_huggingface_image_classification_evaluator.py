@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import sys
 import tempfile
@@ -130,8 +131,13 @@ class Top1ImageClassificationEvaluatorTests(unittest.TestCase):
                     "HF_CACHE_DIR": cache_dir,
                     "DEVICE": "cpu",
                     "HF_MODEL_ID": "nateraw/vit-base-patch16-224-cifar10",
+                    "HF_MAX_SAMPLES": "1",
                 }),
-                patch.object(example, "HuggingFaceImageClassificationDataLoader", return_value=example_loader),
+                patch.object(
+                    example,
+                    "HuggingFaceImageClassificationDataLoader",
+                    return_value=example_loader,
+                ) as loader_factory,
                 patch.object(example, "HuggingFaceImageClassificationInvoker", return_value=invoker) as invoker_factory,
                 patch.object(example, "Top1ImageClassificationEvaluator", return_value=evaluator) as factory,
                 patch("builtins.print") as output,
@@ -139,13 +145,19 @@ class Top1ImageClassificationEvaluatorTests(unittest.TestCase):
                 example.main()
 
         factory.assert_called_once_with(example_loader, invoker)
+        self.assertEqual(loader_factory.call_args.kwargs["max_samples"], 1)
         model_kwargs = invoker_factory.call_args.kwargs["model_kwargs"]
         self.assertEqual(model_kwargs["id2label"][3], "cat")
         self.assertEqual(model_kwargs["id2label"][9], "truck")
         self.assertEqual(model_kwargs["label2id"]["cat"], 3)
         invoker.invoke.assert_called_once_with(image)
         evaluator.evaluate.assert_called_once_with("sample-1", logits)
-        self.assertIn("top1_score=1.0", output.call_args.args[0])
+        metrics = json.loads(output.call_args.args[0])
+        self.assertEqual(
+            [metric["name"] for metric in metrics["metrics"]],
+            ["inference_time", "quality_score"],
+        )
+        self.assertEqual(metrics["metrics"][1]["values"][0]["value"], 1.0)
 
     def setUp(self) -> None:
         self.evaluator = Top1ImageClassificationEvaluator(

@@ -105,15 +105,22 @@ class OpenInferenceServerTests(unittest.TestCase):
                     "OPEN_INFERENCE_LABELS_PATH": "",
                 }, clear=True),
                 patch.object(example, "HuggingFaceImageClassificationDataLoader", return_value=DatasetLoader()) as loader_factory,
-                patch.object(example, "print"),
+                patch.object(example, "print") as output,
             ):
-                report = example.main()
-            self.assertEqual(report["samples"], 1)
-            self.assertEqual(report["dataset_id"], "uoft-cs/cifar10")
+                example.main()
+            self.assertEqual(loader_factory.call_args.kwargs["max_samples"], 1)
             self.assertEqual(loader_factory.call_args.kwargs["params"]["split"], "test")
             self.assertEqual(loader_factory.call_args.kwargs["params"]["image_column"], "img")
-            self.assertEqual(report["top1_accuracy"], 1.0)
-            self.assertEqual(report["results"][0]["prediction"], "dog")
+            metrics = json.loads(output.call_args.args[0])
+            self.assertEqual(
+                [metric["name"] for metric in metrics["metrics"]],
+                ["inference_time", "quality_score"],
+            )
+            self.assertEqual(metrics["metrics"][1]["values"][0]["value"], 1.0)
+            self.assertEqual(
+                self.server.classifier.image_processor.call_args.kwargs["images"].shape,
+                (1, 3, 2, 2),
+            )
         finally:
             server.shutdown()
             server.server_close()
