@@ -17,17 +17,17 @@ from PIL import Image
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-IMPLEMENTATIONS_DIR = PROJECT_ROOT / "task_benchmark" / "implementations"
-DATA_LOADER_DIR = IMPLEMENTATIONS_DIR / "data_loader"
+IMPL_DIR = PROJECT_ROOT / "task_benchmark" / "impl"
+DATA_LOADER_DIR = IMPL_DIR / "data_loader"
 IMAGE_CLASSIFICATION_DIR = DATA_LOADER_DIR / "image_classification"
 
 
 def load_huggingface_data_loader():
     package_paths = {
         "task_benchmark": PROJECT_ROOT / "task_benchmark",
-        "task_benchmark.implementations": IMPLEMENTATIONS_DIR,
-        "task_benchmark.implementations.data_loader": DATA_LOADER_DIR,
-        "task_benchmark.implementations.data_loader.image_classification": (
+        "task_benchmark.impl": IMPL_DIR,
+        "task_benchmark.impl.data_loader": DATA_LOADER_DIR,
+        "task_benchmark.impl.data_loader.image_classification": (
             IMAGE_CLASSIFICATION_DIR
         ),
     }
@@ -37,7 +37,7 @@ def load_huggingface_data_loader():
         package_module.__path__ = [str(package_path)]
         package_modules[package_name] = package_module
 
-    base_module_name = "task_benchmark.implementations.data_loader.data_loader"
+    base_module_name = "task_benchmark.impl.data_loader.data_loader"
     base_spec = importlib.util.spec_from_file_location(
         base_module_name,
         DATA_LOADER_DIR / "data_loader.py",

@@ -6,7 +6,7 @@
 implementation defines `invoke()` for its input and output types:
 
 ```python
-from task_benchmark.implementations.invoker import Invoker
+from task_benchmark.impl.invoker import Invoker
 
 
 class MyInvoker(Invoker[InputType, OutputType]):
@@ -22,7 +22,7 @@ Inference v2 services.
 
 `ImageClassificationInvoker` extends `Invoker[Tensor, Tensor]` and adds the
 abstract method `label_for(class_id: int) -> str`. Import this base from
-`task_benchmark.implementations.invoker.image_classification` to implement a
+`task_benchmark.impl.invoker.image_classification` to implement a
 custom image classifier. `HuggingFaceImageClassificationInvoker` implements
 this contract.
 
@@ -40,7 +40,7 @@ a `torch.Tensor`, without applying softmax.
 ```python
 import torch
 
-from task_benchmark.implementations.invoker.image_classification import (
+from task_benchmark.impl.invoker.image_classification import (
     HuggingFaceImageClassificationInvoker,
 )
 
@@ -101,7 +101,7 @@ model metadata is returned:
 ```python
 import torch
 
-from task_benchmark.implementations.invoker.open_inference import (
+from task_benchmark.impl.invoker.open_inference import (
     OpenInferenceInvoker,
 )
 
@@ -144,11 +144,11 @@ by wrapping an `OpenInferenceInvoker`. Configure the input name, output name,
 and the complete index-to-label mapping in model output order:
 
 ```python
-from task_benchmark.implementations.invoker.open_inference import OpenInferenceInvoker
-from task_benchmark.implementations.invoker.image_classification import (
+from task_benchmark.impl.invoker.open_inference import OpenInferenceInvoker
+from task_benchmark.impl.invoker.image_classification import (
     OpenInferenceImageClassificationInvoker,
 )
-from task_benchmark.implementations.evaluator.image_classification import (
+from task_benchmark.impl.evaluator.image_classification import (
     Top1ImageClassificationEvaluator,
 )
 

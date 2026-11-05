@@ -9,17 +9,17 @@ from urllib import request
 from torch import Tensor
 
 from task_benchmark import BenchmarkManager
-from task_benchmark.implementations.data_loader.image_classification import (
+from task_benchmark.impl.data_loader.image_classification import (
     HuggingFaceImageClassificationDataLoader,
 )
-from task_benchmark.implementations.evaluator.image_classification import (
+from task_benchmark.impl.evaluator.image_classification import (
     Top1ImageClassificationEvaluator,
 )
-from task_benchmark.implementations.invoker.image_classification import (
+from task_benchmark.impl.invoker.image_classification import (
     OpenInferenceImageClassificationInvoker,
 )
-from task_benchmark.implementations.invoker.open_inference import OpenInferenceInvoker
-from task_benchmark.implementations.invoker.base_invoker import Invoker
+from task_benchmark.impl.invoker.open_inference import OpenInferenceInvoker
+from task_benchmark.impl.invoker.base_invoker import Invoker
 
 
 class BatchedImageInvoker(Invoker[Tensor, Tensor]):

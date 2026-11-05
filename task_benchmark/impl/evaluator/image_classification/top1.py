@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING
 
 from torch import Tensor
 
-from task_benchmark.implementations.evaluator.base_evaluator import Evaluator
+from task_benchmark.impl.evaluator.base_evaluator import Evaluator
 
 if TYPE_CHECKING:
-    from task_benchmark.implementations.data_loader.image_classification.base_data_loader import (
+    from task_benchmark.impl.data_loader.image_classification.base_data_loader import (
         ImageClassificationDataLoader,
     )
-    from task_benchmark.implementations.invoker.image_classification.base_invoker import (
+    from task_benchmark.impl.invoker.image_classification.base_invoker import (
         ImageClassificationInvoker,
     )
 

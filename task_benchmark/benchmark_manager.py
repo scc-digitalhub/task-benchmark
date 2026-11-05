@@ -3,10 +3,10 @@ from __future__ import annotations
 import time
 from typing import Any, Generic, TypeVar, cast
 
-from task_benchmark.implementations.data_loader.data_loader import DataLoader
-from task_benchmark.implementations.evaluator.base_evaluator import Evaluator
-from task_benchmark.implementations.invoker.base_invoker import Invoker
-from task_benchmark.implementations.metrics_manager.base_metrics_manager import JSONValue
+from task_benchmark.impl.data_loader.data_loader import DataLoader
+from task_benchmark.impl.evaluator.base_evaluator import Evaluator
+from task_benchmark.impl.invoker.base_invoker import Invoker
+from task_benchmark.impl.metrics_manager.base_metrics_manager import JSONValue
 
 
 InputT = TypeVar("InputT")

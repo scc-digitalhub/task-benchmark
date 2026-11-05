@@ -5,15 +5,15 @@ from unittest.mock import Mock
 
 import torch
 
-from task_benchmark.implementations.invoker.image_classification import (
+from task_benchmark.impl.invoker.image_classification import (
     ImageClassificationInvoker,
     OpenInferenceImageClassificationInvoker,
 )
-from task_benchmark.implementations.invoker.open_inference import OpenInferenceInvoker
-from task_benchmark.implementations.data_loader.image_classification import (
+from task_benchmark.impl.invoker.open_inference import OpenInferenceInvoker
+from task_benchmark.impl.data_loader.image_classification import (
     ImageClassificationDataLoader,
 )
-from task_benchmark.implementations.evaluator.image_classification import (
+from task_benchmark.impl.evaluator.image_classification import (
     Top1ImageClassificationEvaluator,
 )
 

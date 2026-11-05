@@ -8,9 +8,9 @@ from unittest.mock import patch
 from jsonschema import Draft7Validator
 
 from task_benchmark import BenchmarkManager
-from task_benchmark.implementations.data_loader.data_loader import DataLoader
-from task_benchmark.implementations.evaluator.base_evaluator import Evaluator
-from task_benchmark.implementations.invoker.base_invoker import Invoker
+from task_benchmark.impl.data_loader.data_loader import DataLoader
+from task_benchmark.impl.evaluator.base_evaluator import Evaluator
+from task_benchmark.impl.invoker.base_invoker import Invoker
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

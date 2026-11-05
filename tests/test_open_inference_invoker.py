@@ -18,8 +18,8 @@ import torch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-IMPLEMENTATIONS_DIR = PROJECT_ROOT / "task_benchmark" / "implementations"
-INVOKER_PACKAGE_DIR = IMPLEMENTATIONS_DIR / "invoker"
+IMPL_DIR = PROJECT_ROOT / "task_benchmark" / "impl"
+INVOKER_PACKAGE_DIR = IMPL_DIR / "invoker"
 INVOKER_PATH = (
     INVOKER_PACKAGE_DIR / "open_inference" / "invoker.py"
 )
@@ -28,8 +28,8 @@ INVOKER_PATH = (
 def load_invoker_module():
     package_paths = {
         "task_benchmark": PROJECT_ROOT / "task_benchmark",
-        "task_benchmark.implementations": IMPLEMENTATIONS_DIR,
-        "task_benchmark.implementations.invoker": INVOKER_PACKAGE_DIR,
+        "task_benchmark.impl": IMPL_DIR,
+        "task_benchmark.impl.invoker": INVOKER_PACKAGE_DIR,
     }
     package_modules = {}
     for package_name, package_path in package_paths.items():
@@ -37,7 +37,7 @@ def load_invoker_module():
         package_module.__path__ = [str(package_path)]
         package_modules[package_name] = package_module
 
-    base_module_name = "task_benchmark.implementations.invoker.base_invoker"
+    base_module_name = "task_benchmark.impl.invoker.base_invoker"
     base_spec = importlib.util.spec_from_file_location(
         base_module_name,
         INVOKER_PACKAGE_DIR / "base_invoker.py",

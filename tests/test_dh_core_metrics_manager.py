@@ -7,7 +7,7 @@ from pathlib import Path
 
 from jsonschema import Draft7Validator
 
-from task_benchmark.implementations.metrics_manager import DHCoreMetricsManager, MetricsManager
+from task_benchmark.impl.metrics_manager import DHCoreMetricsManager, MetricsManager
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

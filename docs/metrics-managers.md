@@ -32,7 +32,7 @@ The mock reads a fixed response from a JSON file at construction time:
 ```python
 import json
 
-from task_benchmark.implementations.metrics_manager import MockupMetricsManager
+from task_benchmark.impl.metrics_manager import MockupMetricsManager
 
 manager = MockupMetricsManager("examples/json/metrics.json")
 metrics = manager.collect_metrics("my-pod-or-service")
@@ -60,7 +60,7 @@ during construction. Empty service identifiers raise `ValueError`.
 matching series into the format defined in `json/metrics_schema.json`:
 
 ```python
-from task_benchmark.implementations.metrics_manager import DHCoreMetricsManager
+from task_benchmark.impl.metrics_manager import DHCoreMetricsManager
 
 manager = DHCoreMetricsManager("examples/json/dh_core_metrics.json")
 metrics = manager.collect_metrics("949c8a888235496f875a1992bab1b32b")

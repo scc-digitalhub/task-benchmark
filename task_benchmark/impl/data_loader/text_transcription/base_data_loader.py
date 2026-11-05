@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 
 from task_benchmark.abstract.audio_sample import AudioSample
-from task_benchmark.implementations.data_loader.data_loader import DataLoader
+from task_benchmark.impl.data_loader.data_loader import DataLoader
 
 
 class TextTranscriptionDataLoader(DataLoader):

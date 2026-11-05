@@ -4,7 +4,7 @@ from abc import abstractmethod
 
 from torch import Tensor
 
-from task_benchmark.implementations.data_loader.data_loader import DataLoader
+from task_benchmark.impl.data_loader.data_loader import DataLoader
 
 
 class ImageClassificationDataLoader(DataLoader):

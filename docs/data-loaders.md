@@ -26,7 +26,7 @@ data to process. The method can raise `StopIteration` when no samples remain.
 
 `ImageClassificationDataLoader` extends `DataLoader` and requires both
 `next() -> tuple[str, Tensor]` and `labels_for(image_id: str) -> tuple[str, ...]`.
-Import it from `task_benchmark.implementations.data_loader.image_classification`
+Import it from `task_benchmark.impl.data_loader.image_classification`
 when implementing a custom image dataset loader. Both the local-store and
 Hugging Face loaders extend this abstract class.
 
@@ -76,7 +76,7 @@ annotated classes are declared in `classes.txt`.
 ## Uso
 
 ```python
-from task_benchmark.implementations.data_loader.image_classification import (
+from task_benchmark.impl.data_loader.image_classification import (
     LocalStoreImageClassificationDataLoader,
 )
 
@@ -122,7 +122,7 @@ dataset cache directory. The default split is `test`, and the default image and
 label columns are `image` and `label`:
 
 ```python
-from task_benchmark.implementations.data_loader.image_classification import (
+from task_benchmark.impl.data_loader.image_classification import (
     HuggingFaceImageClassificationDataLoader,
 )
 

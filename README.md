@@ -110,7 +110,7 @@ A custom implementation should:
 Minimal skeleton for image-classification task:
 
 ```python
-from task_benchmark.implementations import implementation_registry
+from task_benchmark.impl import implementation_registry
 from task_benchmark.tasks.image_classification import ImageClassificationModel, Prediction
 
 class MyClassifier(ImageClassificationModel):

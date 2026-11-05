@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from task_benchmark.abstract.audio_sample import AudioSample
-from task_benchmark.implementations.invoker.base_invoker import Invoker
+from task_benchmark.impl.invoker.base_invoker import Invoker
 
 
 class TextTranscriptionInvoker(Invoker[AudioSample, str]):

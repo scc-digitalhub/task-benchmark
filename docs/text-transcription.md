@@ -39,7 +39,7 @@ system library. WAV and FLAC are suitable choices for this example.
   the image-classification evaluator remains `Evaluator[Tensor]`.
 
 These bases are exported from their respective
-`task_benchmark.implementations.{data_loader,invoker,evaluator}.text_transcription`
+`task_benchmark.impl.{data_loader,invoker,evaluator}.text_transcription`
 packages. They do not register a new legacy `evaluate(task=...)` workflow.
 
 ## Hugging Face Implementations
@@ -70,13 +70,13 @@ silently truncated. Split longer recordings before passing them to this
 invoker; long-form chunking, diarization, and timestamps are not implemented.
 
 ```python
-from task_benchmark.implementations.data_loader.text_transcription import (
+from task_benchmark.impl.data_loader.text_transcription import (
     HuggingFaceTextTranscriptionDataLoader,
 )
-from task_benchmark.implementations.invoker.text_transcription import (
+from task_benchmark.impl.invoker.text_transcription import (
     HuggingFaceTextTranscriptionInvoker,
 )
-from task_benchmark.implementations.evaluator.text_transcription import WordErrorRateEvaluator
+from task_benchmark.impl.evaluator.text_transcription import WordErrorRateEvaluator
 
 loader = HuggingFaceTextTranscriptionDataLoader(
     "hf-internal-testing/librispeech_asr_dummy", ".cache/huggingface",

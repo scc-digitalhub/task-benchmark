@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from task_benchmark.implementations.metrics_manager import (
+from task_benchmark.impl.metrics_manager import (
     MetricsManager,
     MockupMetricsManager,
 )

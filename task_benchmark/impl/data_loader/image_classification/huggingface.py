@@ -14,7 +14,7 @@ import torch
 from PIL import Image
 from torch import Tensor
 
-from task_benchmark.implementations.data_loader.image_classification.base_data_loader import (
+from task_benchmark.impl.data_loader.image_classification.base_data_loader import (
     ImageClassificationDataLoader,
 )
 

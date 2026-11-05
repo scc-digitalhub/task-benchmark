@@ -16,13 +16,13 @@ import torch
 from datasets import Dataset
 
 from task_benchmark.abstract.audio_sample import AudioSample
-from task_benchmark.implementations.data_loader.text_transcription import (
+from task_benchmark.impl.data_loader.text_transcription import (
     TextTranscriptionDataLoader, HuggingFaceTextTranscriptionDataLoader,
 )
-from task_benchmark.implementations.invoker.text_transcription import (
+from task_benchmark.impl.invoker.text_transcription import (
     TextTranscriptionInvoker, HuggingFaceTextTranscriptionInvoker,
 )
-from task_benchmark.implementations.evaluator.text_transcription import (
+from task_benchmark.impl.evaluator.text_transcription import (
     TextTranscriptionEvaluator, WordErrorRateEvaluator,
 )
 

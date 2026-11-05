@@ -4,7 +4,7 @@ from abc import abstractmethod
 
 from torch import Tensor
 
-from task_benchmark.implementations.invoker.base_invoker import Invoker
+from task_benchmark.impl.invoker.base_invoker import Invoker
 
 
 class ImageClassificationInvoker(Invoker[Tensor, Tensor]):

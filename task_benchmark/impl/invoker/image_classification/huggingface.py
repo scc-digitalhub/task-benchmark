@@ -10,7 +10,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from task_benchmark.implementations.invoker.image_classification.base_invoker import (
+from task_benchmark.impl.invoker.image_classification.base_invoker import (
     ImageClassificationInvoker,
 )
 

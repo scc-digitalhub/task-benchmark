@@ -16,28 +16,28 @@ from unittest.mock import Mock, patch
 
 import torch
 
-from task_benchmark.implementations.data_loader.image_classification import (
+from task_benchmark.impl.data_loader.image_classification import (
     ImageClassificationDataLoader,
 )
-from task_benchmark.implementations.invoker.image_classification import (
+from task_benchmark.impl.invoker.image_classification import (
     ImageClassificationInvoker,
 )
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-IMPLEMENTATIONS_DIR = PROJECT_ROOT / "task_benchmark" / "implementations"
-EVALUATOR_DIR = IMPLEMENTATIONS_DIR / "evaluator"
+IMPL_DIR = PROJECT_ROOT / "task_benchmark" / "impl"
+EVALUATOR_DIR = IMPL_DIR / "evaluator"
 IMAGE_CLASSIFICATION_EVALUATOR_DIR = EVALUATOR_DIR / "image_classification"
-BASE_EVALUATOR_NAME = "task_benchmark.implementations.evaluator.base_evaluator"
+BASE_EVALUATOR_NAME = "task_benchmark.impl.evaluator.base_evaluator"
 EVALUATOR_PATH = IMAGE_CLASSIFICATION_EVALUATOR_DIR / "top1.py"
 
 
 def load_evaluator_class():
     package_paths = {
         "task_benchmark": PROJECT_ROOT / "task_benchmark",
-        "task_benchmark.implementations": IMPLEMENTATIONS_DIR,
-        "task_benchmark.implementations.evaluator": EVALUATOR_DIR,
-        "task_benchmark.implementations.evaluator.image_classification": (
+        "task_benchmark.impl": IMPL_DIR,
+        "task_benchmark.impl.evaluator": EVALUATOR_DIR,
+        "task_benchmark.impl.evaluator.image_classification": (
             IMAGE_CLASSIFICATION_EVALUATOR_DIR
         ),
     }

@@ -4,14 +4,14 @@ import json
 import os
 
 from task_benchmark import BenchmarkManager
-from task_benchmark.implementations.data_loader.text_transcription import (
+from task_benchmark.impl.data_loader.text_transcription import (
     HuggingFaceTextTranscriptionDataLoader,
 )
-from task_benchmark.implementations.evaluator.text_transcription import WordErrorRateEvaluator
-from task_benchmark.implementations.invoker.text_transcription import (
+from task_benchmark.impl.evaluator.text_transcription import WordErrorRateEvaluator
+from task_benchmark.impl.invoker.text_transcription import (
     OpenInferenceTextTranscriptionInvoker,
 )
-from task_benchmark.implementations.metrics_manager.base_metrics_manager import JSONValue
+from task_benchmark.impl.metrics_manager.base_metrics_manager import JSONValue
 
 
 def main() -> JSONValue:

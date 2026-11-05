@@ -14,7 +14,7 @@ from urllib import error, request
 import torch
 
 from task_benchmark.abstract.audio_sample import AudioSample
-from task_benchmark.implementations.invoker.text_transcription import (
+from task_benchmark.impl.invoker.text_transcription import (
     OpenInferenceTextTranscriptionInvoker,
 )
 
@@ -29,7 +29,7 @@ class OpenInferenceTextTranscriptionInvokerTests(unittest.TestCase):
         result = {"outputs": [{"name": "text", "datatype": "BYTES",
                                "shape": [1], "data": ["Hello world."]}]}
         with patch(
-            "task_benchmark.implementations.invoker.text_transcription.open_inference.request.urlopen",
+            "task_benchmark.impl.invoker.text_transcription.open_inference.request.urlopen",
             return_value=BytesIO(json.dumps(result).encode()),
         ) as urlopen:
             text = self.invoker.invoke(AudioSample(torch.tensor([0.0, 0.5]), 16000))
@@ -45,7 +45,7 @@ class OpenInferenceTextTranscriptionInvokerTests(unittest.TestCase):
         }]}):
             with self.subTest(result=result):
                 with patch(
-                    "task_benchmark.implementations.invoker.text_transcription.open_inference.request.urlopen",
+                    "task_benchmark.impl.invoker.text_transcription.open_inference.request.urlopen",
                     return_value=BytesIO(json.dumps(result).encode()),
                 ):
                     with self.assertRaises(RuntimeError):
@@ -103,7 +103,7 @@ class WhisperV2ServerTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
     def test_dataset_client_main_over_http(self) -> None:
-        from task_benchmark.implementations.data_loader.text_transcription import TextTranscriptionDataLoader
+        from task_benchmark.impl.data_loader.text_transcription import TextTranscriptionDataLoader
 
         class DatasetLoader(TextTranscriptionDataLoader):
             def __iter__(self):

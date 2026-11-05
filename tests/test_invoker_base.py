@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 INVOKER_BASE_PATH = (
     PROJECT_ROOT
     / "task_benchmark"
-    / "implementations"
+    / "impl"
     / "invoker"
     / "base_invoker.py"
 )

@@ -5,7 +5,7 @@ from collections.abc import Mapping
 import torch
 from torch import Tensor
 
-from task_benchmark.implementations.invoker.open_inference import OpenInferenceInvoker
+from task_benchmark.impl.invoker.open_inference import OpenInferenceInvoker
 
 from .base_invoker import ImageClassificationInvoker
 

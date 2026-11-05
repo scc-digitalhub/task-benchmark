@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from task_benchmark.implementations.evaluator.base_evaluator import Evaluator
+from task_benchmark.impl.evaluator.base_evaluator import Evaluator
 
 
 class TextTranscriptionEvaluator(Evaluator[str]):

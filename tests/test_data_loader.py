@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_LOADER_PATH = (
     PROJECT_ROOT
     / "task_benchmark"
-    / "implementations"
+    / "impl"
     / "data_loader"
     / "data_loader.py"
 )

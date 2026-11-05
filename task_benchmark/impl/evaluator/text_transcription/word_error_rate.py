@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from task_benchmark.implementations.data_loader.text_transcription.base_data_loader import (
+from task_benchmark.impl.data_loader.text_transcription.base_data_loader import (
     TextTranscriptionDataLoader,
 )
 
