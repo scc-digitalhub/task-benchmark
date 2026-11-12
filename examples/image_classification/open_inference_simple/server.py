@@ -25,7 +25,6 @@ def model_metadata():
         "inputs": [{"name": "pixel_values", "datatype": "FP32", "shape": [1, 3, -1, -1]}],
         "outputs": [{"name": "scores", "datatype": "FP32",
                      "shape": [1, classifier.model.config.num_labels]}],
-        "parameters": {"id2label": classifier.model.config.id2label, "model_id": MODEL},
     }
 
 

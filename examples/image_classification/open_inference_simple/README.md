@@ -1,6 +1,7 @@
 # OpenInference image classification example
 
-This folder contains a self-contained OpenInference server plus the benchmark client that calls it.
+This folder contains OpenInference servers for ViT and timm ResNet models, plus
+the benchmark client that calls them.
 
 The default server model is `nateraw/vit-base-patch16-224-cifar10`, fine-tuned
 for CIFAR-10. The endpoint alias remains `vit-base-patch16-224`.
@@ -11,26 +12,48 @@ for CIFAR-10. The endpoint alias remains `vit-base-patch16-224`.
 docker compose -f examples/image_classification/open_inference_simple/docker-compose.yml up --build
 ```
 
-This starts a local HTTP server on:
+This starts both servers:
 
-- http://localhost:9090
-- model endpoint: /v2/models/vit-base-patch16-224/infer
+- ViT: http://localhost:9090, model endpoint
+  `/v2/models/vit-base-patch16-224/infer`
+- ResNet: http://localhost:9091, model endpoint
+  `/v2/models/resnet18_cifar10/infer`
 
-The first `--build` installs pinned CPU-compatible Torch and Transformers
-packages into the server image and downloads the Hugging Face model, so it can
-take several minutes. The Docker image and model weights are cached; later
-starts should be much faster.
+The first `--build` installs the server dependencies. Models are downloaded
+when their containers first start, so startup may take several minutes.
+Docker images and model weights are cached; later starts should be faster.
 
 The Compose setup disables the optional Xet transfer backend because regular
 Hugging Face downloads are more reliable in this local Docker setup.
 
-Wait for `Serving on http://0.0.0.0:9090` before running the benchmark client.
+Wait for both server startup messages before sending requests. To start only
+one server, append its service name, `open-inference-vit` or
+`open-inference-resnet`, to the `docker compose up` command.
+
+The ResNet image uses the `detectors` package to register the custom timm model
+and persists its downloaded weights in the `open_inference_resnet_cache`
+volume.
 
 ## Run the benchmark client
 
 ```bash
-.venv/bin/python examples/image_classification/open_inference_simple/open_inference_hf.py
+.venv/bin/python examples/image_classification/open_inference_simple/open_inference_vit.py
 ```
+
+To benchmark the timm ResNet against CIFAR-10, start its service and run the
+dedicated client:
+
+```powershell
+docker compose -f examples/image_classification/open_inference_simple/docker-compose.yml up -d --build open-inference-resnet
+python -m pip install -e ".[huggingface]"
+python examples/image_classification/open_inference_simple/open_inference_resnet.py
+```
+
+The ResNet client defaults to
+`http://localhost:9091/v2/models/resnet18_cifar10` and the CIFAR-10 `test`
+split. It uses the canonical CIFAR-10 class order; set
+`OPEN_INFERENCE_LABELS_PATH` if the served model's output indices use a
+different mapping. The mapping must reflect the model's actual class order.
 
 You can override the target server/model with environment variables:
 
@@ -38,14 +61,14 @@ You can override the target server/model with environment variables:
 OPEN_INFERENCE_BASE_URL=http://localhost:9090 \
 OPEN_INFERENCE_MODEL=google/vit-base-patch16-224 \
 OPEN_INFERENCE_MODEL_NAME=vit-base-patch16-224 \
-.venv/bin/python examples/image_classification/open_inference_simple/open_inference.py
+.venv/bin/python examples/image_classification/open_inference_simple/open_inference_vit.py
 ```
 
 This example uses a local Hugging Face model and exposes the OpenInference v2 HTTP contract directly from this repository, without needing the separate `task-inference` project.
 
 ## Hugging Face Dataset Client
 
-`open_inference_hf.py` combines a Hugging Face dataset loader, the numeric
+`open_inference_vit.py` combines a Hugging Face dataset loader, the numeric
 `OpenInferenceInvoker` via its image-classification adapter, and
 `Top1ImageClassificationEvaluator`.
 
@@ -54,7 +77,7 @@ Rebuild and recreate the example server to enable the numeric tensor contract:
 ```powershell
 docker compose -f examples/image_classification/open_inference_simple/docker-compose.yml up -d --build
 python -m pip install -e ".[huggingface]"
-python examples/image_classification/open_inference_simple/open_inference_hf.py
+python examples/image_classification/open_inference_simple/open_inference_vit.py
 ```
 
 Wait for the server log `Serving on http://0.0.0.0:8080` before running the
@@ -70,9 +93,10 @@ The client streams up to 50 images from the `test` split of `uoft-cs/cifar10`,
 using the `img` and `label` columns. The first run needs network access to fetch
 the dataset and server model. The numeric invocation is unchanged.
 
-The example server exposes `parameters.model_id` and `parameters.id2label` in
-its metadata as example-specific extensions. For the default CIFAR-10 pair,
-the client uses the model's documented class order to replace its generic
+The server metadata contains the standard model name, inputs, and outputs; it
+does not expose model parameters or label mappings. The client loads `id2label`
+from its configured model's Hugging Face configuration. For the default
+CIFAR-10 pair, the client uses the model's documented class order to replace its generic
 `LABEL_0` through `LABEL_9` names: airplane, automobile, bird, cat, deer, dog,
 frog, horse, ship, truck. This does not change model weights.
 The previously supported ImageNet pair also retains its explicit WordNet-order
@@ -96,7 +120,13 @@ Configuration is available through environment variables:
 | `HF_LABEL_COLUMN` | `label` |
 | `HF_CACHE_DIR` | `.cache/huggingface` |
 | `HF_MAX_SAMPLES` | `50` |
+| `OPEN_INFERENCE_MODEL` | `nateraw/vit-base-patch16-224-cifar10` |
 | `OPEN_INFERENCE_LABELS_PATH` | Optional JSON mapping of model indices to dataset labels |
+
+Set `OPEN_INFERENCE_MODEL` on the client to the model served by the endpoint so
+it can load that model's label configuration. This setting does not affect the
+server. Use `OPEN_INFERENCE_LABELS_PATH` when the model configuration is
+unavailable or the desired label mapping differs.
 
 For a custom taxonomy, the mapping file must contain all model class indices
 starting at zero, for example `{"0": "cat", "1": "dog"}`. These labels must
@@ -114,7 +144,7 @@ docker compose -f examples/image_classification/open_inference_simple/docker-com
 $env:HF_DATASET_ID = "mrm8488/ImageNet1K-val"
 $env:HF_DATASET_SPLIT = "train"
 $env:HF_IMAGE_COLUMN = "image"
-python examples/image_classification/open_inference_simple/open_inference_hf.py
+python examples/image_classification/open_inference_simple/open_inference_vit.py
 ```
 
 For ImageNet, `train` is the published split name of this validation export.

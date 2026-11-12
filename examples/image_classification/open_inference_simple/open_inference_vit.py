@@ -30,20 +30,21 @@ class BatchedImageInvoker(Invoker[Tensor, Tensor]):
         return self.invoker.invoke(test_data.unsqueeze(0))
 
 
-def class_labels(metadata, loader, dataset_id: str) -> dict[int, str]:
+def class_labels(loader, dataset_id: str, model_id: str) -> dict[int, str]:
     mapping_path = os.getenv("OPEN_INFERENCE_LABELS_PATH")
     if mapping_path:
         mapping = json.loads(Path(mapping_path).read_text(encoding="utf-8"))
         return {int(class_id): label for class_id, label in mapping.items()}
 
-    parameters = metadata.get("parameters", {})
-    mapping = parameters.get("id2label")
+    from transformers import AutoConfig
+
+    mapping = AutoConfig.from_pretrained(model_id).id2label
     if not isinstance(mapping, dict) or not mapping:
-        raise ValueError("Server metadata must expose parameters.id2label, or set OPEN_INFERENCE_LABELS_PATH")
+        raise ValueError("Model configuration must provide id2label, or set OPEN_INFERENCE_LABELS_PATH")
     labels = {int(class_id): label for class_id, label in mapping.items()}
     if (
         dataset_id == "uoft-cs/cifar10"
-        and parameters.get("model_id") == "nateraw/vit-base-patch16-224-cifar10"
+        and model_id == "nateraw/vit-base-patch16-224-cifar10"
     ):
         class_names = (
             "airplane", "automobile", "bird", "cat", "deer",
@@ -54,7 +55,7 @@ def class_labels(metadata, loader, dataset_id: str) -> dict[int, str]:
         return dict(enumerate(class_names))
     if (
         dataset_id == "mrm8488/ImageNet1K-val"
-        and parameters.get("model_id") == "google/vit-base-patch16-224"
+        and model_id == "google/vit-base-patch16-224"
     ):
         classes = loader.classes
         if (
@@ -79,6 +80,7 @@ def main() -> None:
         "OPEN_INFERENCE_BASE_URL",
         "http://localhost:9090/v2/models/vit-base-patch16-224",
     ).rstrip("/").removesuffix("/infer")
+    model_id = os.getenv("OPEN_INFERENCE_MODEL", "nateraw/vit-base-patch16-224-cifar10")
     dataset_id = os.getenv("HF_DATASET_ID", "uoft-cs/cifar10")
     default_split = "test" if dataset_id == "uoft-cs/cifar10" else "train"
     default_image_column = "img" if dataset_id == "uoft-cs/cifar10" else "image"
@@ -100,10 +102,13 @@ def main() -> None:
         },
         max_samples=max_samples,
     )
-    labels = class_labels(metadata, loader, dataset_id)
+    labels = class_labels(loader, dataset_id, model_id)
     client = OpenInferenceInvoker(f"{base_url}/infer")
     classifier = OpenInferenceImageClassificationInvoker(
-        client, input_name="pixel_values", output_name="scores", labels=labels,
+        client, 
+        input_name="pixel_values", 
+        output_name="scores", 
+        labels=labels,
     )
     evaluator = Top1ImageClassificationEvaluator(loader, classifier)
     try:

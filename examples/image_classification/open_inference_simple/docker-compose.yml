@@ -1,10 +1,10 @@
 name: image-classification-open-inference
 
 services:
-  open-inference-server:
+  open-inference-vit:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile-vit
     ports:
       - "9090:9090"
     environment:
@@ -16,5 +16,21 @@ services:
     volumes:
       - open_inference_model_cache:/root/.cache/huggingface
 
+  open-inference-resnet:
+    build:
+      context: .
+      dockerfile: Dockerfile-resnet
+    ports:
+      - "9091:8080"
+    environment:
+      OPEN_INFERENCE_MODEL: resnet18_cifar10
+      OPEN_INFERENCE_MODEL_NAME: resnet18_cifar10
+      OPEN_INFERENCE_HOST: 0.0.0.0
+      OPEN_INFERENCE_PORT: "8080"
+      OPEN_INFERENCE_DEVICE: cpu
+    volumes:
+      - open_inference_resnet_cache:/root/.cache/torch
+
 volumes:
   open_inference_model_cache:
+  open_inference_resnet_cache:
