@@ -92,6 +92,23 @@ ImageClassificationDataObject(
 )
 ```
 
+For a tiny YOLO26n-cls-compatible smoke-test dataset, use the 24-image
+ImageNet10 subset:
+
+```python
+from task_benchmark.impl.data_loader.image_classification import (
+    ImageNet10ImageClassificationDataLoader,
+)
+
+loader = ImageNet10ImageClassificationDataLoader(".cache/imagenet10")
+image_id, image = next(loader)
+labels = loader.labels_for(image_id)
+```
+
+The loader downloads ImageNet10 when the selected split is missing and defaults
+to its 12-image `val` split. It returns ImageNet class names such as `tench`;
+this tiny subset is for smoke tests, not accuracy benchmarking.
+
 ## Report output
 
 The report returned by `evaluate(...)` is a dictionary that includes:

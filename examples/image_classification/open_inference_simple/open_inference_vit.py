@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from urllib import request
@@ -20,6 +21,23 @@ from task_benchmark.impl.invoker.image_classification import (
 )
 from task_benchmark.impl.invoker.open_inference import OpenInferenceInvoker
 from task_benchmark.impl.invoker.base_invoker import Invoker
+
+
+def save_metrics(metrics: dict[str, Any]) -> Path:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    output_dir = Path.cwd() / "out"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    suffix = 0
+    while True:
+        collision_suffix = "" if suffix == 0 else f"_{suffix}"
+        metrics_path = output_dir / f"metrics_vit_{timestamp}{collision_suffix}.json"
+        try:
+            with metrics_path.open("x", encoding="utf-8") as metrics_file:
+                json.dump(metrics, metrics_file, indent=2)
+                metrics_file.write("\n")
+            return metrics_path
+        except FileExistsError:
+            suffix += 1
 
 
 class BatchedImageInvoker(Invoker[Tensor, Tensor]):
@@ -119,6 +137,8 @@ def main() -> None:
             service_id=base_url,
         ).run_benchmark()
         print(json.dumps(metrics, indent=2))
+        metrics_path = save_metrics(metrics)
+        print(f"Metrics saved to: {metrics_path}")
     finally:
         classifier.close()
 

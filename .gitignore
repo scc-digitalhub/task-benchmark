@@ -219,3 +219,5 @@ __marimo__/
 
 #   Ignore directories containing agent-specific configurations and state.
 .agents/
+
+out/

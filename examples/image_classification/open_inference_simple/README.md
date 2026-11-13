@@ -55,6 +55,23 @@ split. It uses the canonical CIFAR-10 class order; set
 `OPEN_INFERENCE_LABELS_PATH` if the served model's output indices use a
 different mapping. The mapping must reflect the model's actual class order.
 
+The ViT and ResNet clients print their metrics and save a JSON copy under
+`out/`, using unique names prefixed with `metrics_vit_` and
+`metrics_resnet_`, respectively.
+
+To benchmark the YOLO26n-cls service at `localhost:60389`, run:
+
+```powershell
+python examples/image_classification/open_inference_simple/open_inference_yolo.py
+```
+
+The client uses the 12-image ImageNet10 `val` split and resizes/crops each
+image to 224×224 before sending it as `images` FP32. It expects an `output0`
+tensor with 1000 scores. The first ten scores are mapped to ImageNet10 class
+names; other scores use placeholders by default, so provide a full 1000-class
+JSON mapping through `OPEN_INFERENCE_LABELS_PATH` for readable predictions
+outside ImageNet10.
+
 You can override the target server/model with environment variables:
 
 ```bash

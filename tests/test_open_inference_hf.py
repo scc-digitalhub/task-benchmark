@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import tempfile
 import threading
 import unittest
 from http.server import HTTPServer
@@ -100,35 +101,80 @@ class OpenInferenceServerTests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            with (
-                patch.dict(os.environ, {
-                    "OPEN_INFERENCE_BASE_URL": f"http://127.0.0.1:{server.server_port}/v2/models/{self.server.MODEL_NAME}",
-                        "OPEN_INFERENCE_MODEL": "nateraw/vit-base-patch16-224-cifar10",
-                        "HF_MAX_SAMPLES": "1",
-                        "OPEN_INFERENCE_LABELS_PATH": "",
-                    }, clear=True),
+            with tempfile.TemporaryDirectory() as output_directory:
+                with (
+                    patch.dict(os.environ, {
+                        "OPEN_INFERENCE_BASE_URL": f"http://127.0.0.1:{server.server_port}/v2/models/{self.server.MODEL_NAME}",
+                            "OPEN_INFERENCE_MODEL": "nateraw/vit-base-patch16-224-cifar10",
+                            "HF_MAX_SAMPLES": "1",
+                            "OPEN_INFERENCE_LABELS_PATH": "",
+                        }, clear=True),
                     patch("transformers.AutoConfig.from_pretrained", return_value=model.config),
                     patch.object(example, "HuggingFaceImageClassificationDataLoader", return_value=DatasetLoader()) as loader_factory,
+                    patch.object(example.Path, "cwd", return_value=Path(output_directory)),
                     patch.object(example, "print") as output,
-            ):
-                example.main()
-            self.assertEqual(loader_factory.call_args.kwargs["max_samples"], 1)
-            self.assertEqual(loader_factory.call_args.kwargs["params"]["split"], "test")
-            self.assertEqual(loader_factory.call_args.kwargs["params"]["image_column"], "img")
-            metrics = json.loads(output.call_args.args[0])
-            self.assertEqual(
-                [metric["name"] for metric in metrics["metrics"]],
-                ["inference_time", "quality_score"],
-            )
-            self.assertEqual(metrics["metrics"][1]["values"][0]["value"], 1.0)
-            self.assertEqual(
-                self.server.classifier.image_processor.call_args.kwargs["images"].shape,
-                (1, 3, 2, 2),
-            )
+                ):
+                    example.main()
+                self.assertEqual(loader_factory.call_args.kwargs["max_samples"], 1)
+                self.assertEqual(loader_factory.call_args.kwargs["params"]["split"], "test")
+                self.assertEqual(loader_factory.call_args.kwargs["params"]["image_column"], "img")
+                printed_metrics = next(
+                    call.args[0]
+                    for call in output.call_args_list
+                    if call.args[0].startswith("{")
+                )
+                metrics = json.loads(printed_metrics)
+                saved_metrics = list(
+                    (Path(output_directory) / "out").glob("metrics_vit_*.json")
+                )
+                self.assertEqual(len(saved_metrics), 1)
+                self.assertEqual(
+                    json.loads(saved_metrics[0].read_text(encoding="utf-8")),
+                    metrics,
+                )
+                self.assertEqual(
+                    [metric["name"] for metric in metrics["metrics"]],
+                    ["inference_time", "quality_score"],
+                )
+                self.assertEqual(metrics["metrics"][1]["values"][0]["value"], 1.0)
+                self.assertEqual(
+                    self.server.classifier.image_processor.call_args.kwargs["images"].shape,
+                    (1, 3, 2, 2),
+                )
         finally:
             server.shutdown()
             server.server_close()
             thread.join()
+
+    def test_vit_and_resnet_clients_save_unique_metrics_files(self) -> None:
+        for script_name, prefix in (
+            ("open_inference_vit.py", "metrics_vit_"),
+            ("open_inference_resnet.py", "metrics_resnet_"),
+        ):
+            example = load_module(
+                f"metrics_{prefix.rstrip('_')}",
+                EXAMPLE_DIR / script_name,
+            )
+            with tempfile.TemporaryDirectory() as temporary_directory:
+                with patch.object(
+                    example.Path,
+                    "cwd",
+                    return_value=Path(temporary_directory),
+                ):
+                    first_path = example.save_metrics({"quality_score": 1.0})
+                    second_path = example.save_metrics({"quality_score": 0.5})
+
+                self.assertNotEqual(first_path, second_path)
+                self.assertTrue(first_path.name.startswith(prefix))
+                self.assertTrue(second_path.name.startswith(prefix))
+                self.assertEqual(
+                    json.loads(first_path.read_text(encoding="utf-8")),
+                    {"quality_score": 1.0},
+                )
+                self.assertEqual(
+                    json.loads(second_path.read_text(encoding="utf-8")),
+                    {"quality_score": 0.5},
+                )
 
     def test_default_imagenet_pair_uses_verified_class_order(self) -> None:
         example = load_module("remote_vit_labels", EXAMPLE_DIR / "open_inference_vit.py")

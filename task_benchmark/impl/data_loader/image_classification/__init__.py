@@ -5,9 +5,11 @@
 from .base_data_loader import ImageClassificationDataLoader
 from .local_store import LocalStoreImageClassificationDataLoader
 from .huggingface import HuggingFaceImageClassificationDataLoader
+from .imagenet10 import ImageNet10ImageClassificationDataLoader
 
 __all__ = [
 	"ImageClassificationDataLoader",
 	"HuggingFaceImageClassificationDataLoader",
 	"LocalStoreImageClassificationDataLoader",
+	"ImageNet10ImageClassificationDataLoader",
 ]
