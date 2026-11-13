@@ -26,8 +26,9 @@ class MockupMetricsManager(MetricsManager):
         *,
         window_from: int | None = None,
         window_to: int | None = None,
+        metric_names: list[str] | None = None,
     ) -> JSONValue:
-        """Return a fixed fixture copy, ignoring params and valid time bounds."""
+        """Return a fixture copy, ignoring params, bounds, and metric names."""
         self._validate_window(window_from, window_to)
         if not isinstance(service_id, str):
             raise TypeError("service_id must be a string")

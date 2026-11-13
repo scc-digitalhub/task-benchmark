@@ -23,6 +23,7 @@ from task_benchmark.impl.invoker.image_classification import (
     OpenInferenceImageClassificationInvoker,
 )
 from task_benchmark.impl.invoker.open_inference import OpenInferenceInvoker
+from task_benchmark.impl.metrics_manager import DHCoreMetricsManager
 
 
 MODEL_CLASSES = 1000
@@ -119,11 +120,46 @@ def class_labels(
     return labels
 
 
+def merge_dhcore_metrics(
+    benchmark_metrics: dict[str, Any],
+    run_id: str,
+    metric_names: list[str]
+) -> dict[str, Any]:
+    window_from = benchmark_metrics.get("window_from")
+    window_to = benchmark_metrics.get("window_to")
+    benchmark_series = benchmark_metrics.get("metrics")
+    if type(window_from) is not int or type(window_to) is not int:
+        raise ValueError("Benchmark metrics must contain integer window bounds")
+    if not isinstance(benchmark_series, list):
+        raise ValueError("Benchmark metrics must contain a metrics list")
+
+    dhcore_metrics = DHCoreMetricsManager().collect_metrics(
+        run_id,
+        window_from=window_from,
+        window_to=window_to,
+        metric_names=metric_names
+    )
+    if not isinstance(dhcore_metrics, dict):
+        raise ValueError("DHCore metrics response must be an object")
+    dhcore_series = dhcore_metrics.get("metrics")
+    if not isinstance(dhcore_series, list):
+        raise ValueError("DHCore metrics response must contain a metrics list")
+
+    combined_metrics = dict(benchmark_metrics)
+    combined_metrics["metrics"] = [*benchmark_series, *dhcore_series]
+    return combined_metrics
+
+
 def main() -> None:
     base_url = os.getenv(
         "OPEN_INFERENCE_BASE_URL",
-        "http://localhost:59462/v2/models/yolo26n-cls",
+        "http://localhost:54978/v2/models/yolo26n-cls",
     ).rstrip("/").removesuffix("/infer")
+    run_id = os.getenv("DHCORE_RUN_ID", "e099f9f4b3584985ae19b6d5a4746ec6")
+    if not run_id or not run_id.strip():
+        raise RuntimeError("DHCORE_RUN_ID must be set to the DigitalHub run ID")
+    run_id = run_id.strip()
+
     max_samples = int(os.getenv("IMAGENET10_MAX_SAMPLES", "12"))
     if max_samples < 1:
         raise ValueError("IMAGENET10_MAX_SAMPLES must be greater than zero")
@@ -160,12 +196,14 @@ def main() -> None:
     )
     evaluator = Top1ImageClassificationEvaluator(loader, classifier)
     try:
-        metrics = BenchmarkManager(
+        benchmark_metrics = BenchmarkManager(
             data_loader=loader,
             invoker=BatchedImageInvoker(classifier),
             evaluator=evaluator,
             service_id=base_url,
         ).run_benchmark()
+        metric_names = ["cpu", "memory"]
+        metrics = merge_dhcore_metrics(benchmark_metrics, run_id, metric_names)
         print(json.dumps(metrics, indent=2))
         metrics_path = save_metrics(metrics)
         print(f"Metrics saved to: {metrics_path}")

@@ -20,8 +20,9 @@ class MetricsManager(ABC):
         *,
         window_from: int | None = None,
         window_to: int | None = None,
+        metric_names: list[str] | None = None,
     ) -> JSONValue:
-        """Return measurements within optional inclusive Unix timestamp bounds."""
+        """Return measurements within optional time bounds and metric-name filter."""
         raise NotImplementedError
 
     @staticmethod

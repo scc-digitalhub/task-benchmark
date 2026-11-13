@@ -86,6 +86,36 @@ class OpenInferenceYoloClientTests(unittest.TestCase):
             self.assertEqual(json.loads(first_path.read_text(encoding="utf-8")), metrics)
             self.assertEqual(json.loads(second_path.read_text(encoding="utf-8")), metrics)
 
+    def test_merges_dhcore_metrics_using_benchmark_window(self) -> None:
+        benchmark_metrics = {
+            "service_id": "http://localhost:59462/v2/models/yolo26n-cls",
+            "window_from": 100,
+            "window_to": 200,
+            "metrics": [{"name": "quality_score", "unit": "ratio", "values": [], "summary": []}],
+        }
+        dhcore_metrics = {
+            "service_id": "run-123",
+            "window_from": 100,
+            "window_to": 200,
+            "metrics": [{"name": "cpu", "unit": "seconds", "values": [], "summary": []}],
+        }
+
+        with patch.object(example, "DHCoreMetricsManager") as manager_class:
+            manager_class.return_value.collect_metrics.return_value = dhcore_metrics
+            result = example.merge_dhcore_metrics(benchmark_metrics, "run-123")
+
+        manager_class.return_value.collect_metrics.assert_called_once_with(
+            "run-123",
+            window_from=100,
+            window_to=200,
+        )
+        self.assertEqual(result["service_id"], benchmark_metrics["service_id"])
+        self.assertEqual(
+            [metric["name"] for metric in result["metrics"]],
+            ["quality_score", "cpu"],
+        )
+        self.assertEqual(len(benchmark_metrics["metrics"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

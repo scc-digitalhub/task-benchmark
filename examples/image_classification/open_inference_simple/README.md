@@ -62,6 +62,7 @@ The ViT and ResNet clients print their metrics and save a JSON copy under
 To benchmark the YOLO26n-cls service at `localhost:60389`, run:
 
 ```powershell
+$env:DHCORE_RUN_ID = "<digitalhub-run-id>"
 python examples/image_classification/open_inference_simple/open_inference_yolo.py
 ```
 
@@ -70,7 +71,9 @@ image to 224×224 before sending it as `images` FP32. It expects an `output0`
 tensor with 1000 scores. The first ten scores are mapped to ImageNet10 class
 names; other scores use placeholders by default, so provide a full 1000-class
 JSON mapping through `OPEN_INFERENCE_LABELS_PATH` for readable predictions
-outside ImageNet10.
+outside ImageNet10. After benchmarking, the client queries DHCore using
+`DHCORE_RUN_ID` and the benchmark's time window, then appends those resource
+metrics to the benchmark result before printing and saving the JSON.
 
 You can override the target server/model with environment variables:
 

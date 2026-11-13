@@ -9,6 +9,7 @@ collect_metrics(
 	*,
 	window_from: int | None = None,
 	window_to: int | None = None,
+	metric_names: list[str] | None = None,
 ) -> JSONValue
 ```
 
@@ -42,7 +43,7 @@ serialized_metrics = json.dumps(metrics)
 Run this example from the repository root, or supply an absolute file path.
 The mock returns the same fixture for every non-empty identifier. It does not
 contact a service, filter measurements, rewrite metadata, or update timestamps.
-Optional `params` are accepted but ignored and left unchanged by the mock.
+Optional `params` and `metric_names` are accepted but ignored by the mock.
 Time bounds are validated but do not filter the mock's fixed fixture.
 Each response is a deep copy so callers cannot mutate subsequent responses.
 The fixture remains available even if its file is removed after construction.
@@ -56,21 +57,44 @@ during construction. Empty service identifiers raise `ValueError`.
 
 ## DHCoreMetricsManager
 
-`DHCoreMetricsManager` reads a DHCore JSON export on each call and converts its
-matching series into the format defined in `json/metrics_schema.json`:
+`DHCoreMetricsManager` fetches a run's DHCore metrics over HTTP and converts the
+matching series into the format defined in `json/metrics_schema.json`. The API
+response must be a list of entries in the same format as
+`examples/json/dh_core_metrics.json`:
 
 ```python
 from task_benchmark.impl.metrics_manager import DHCoreMetricsManager
 
-manager = DHCoreMetricsManager("examples/json/dh_core_metrics.json")
-metrics = manager.collect_metrics("949c8a888235496f875a1992bab1b32b")
+manager = DHCoreMetricsManager()
+metrics = manager.collect_metrics("949c8a888235496f875a1992bab1b32b")  # run_id
 ```
 
-The constructor defaults to this fixture path, relative to the working directory.
-You can instead provide an absolute path. `service_id` must match an entry's
-complete `id`, or a `pod`, `service`, `container`, or `dhcore_run` label value
-exactly. The example uses the fixture's DHCore run ID. Unmatched entries are
-excluded; an identifier with no matching entries raises `ValueError`.
+By default, the manager calls
+`https://core.dev.atlas.fbk.eu/api/v1/-/test-hf/resource_metrics/runs/{run_id}`.
+The run ID is URL-encoded before it is added to the path. To use a different
+Core/project endpoint, pass its `/runs` prefix to the constructor or set
+`DHCORE_RESOURCE_METRICS_RUNS_URL` to that prefix. `service_id` is the run ID;
+entries are selected by exact entry ID or `pod`, `service`, `container`, or
+`dhcore_run` label value. Unmatched entries are excluded; an identifier with
+no matching entries raises `ValueError`.
+
+`metric_names` optionally filters the returned metric series by exact name.
+`None` keeps all series; an empty list selects none. For example:
+
+```python
+metrics = manager.collect_metrics(
+    "949c8a888235496f875a1992bab1b32b",
+    metric_names=["cpu", "memory"],
+)
+```
+
+The request sends `Authorization: Bearer …` using `DHCORE_ACCESS_TOKEN` from
+the process environment. If that variable is unset or empty, the manager reads
+`dhcore_access_token` from the active environment section in
+`~/.dhcore.ini` (selected by `current_environment`). It does not print or log
+the token. If neither source provides a token, it raises `RuntimeError`; HTTP
+errors such as an expired-token `401` are propagated, so refresh the local
+environment with `dhcli refresh`.
 
 The response contains the requested `service_id`, `window_from`, `window_to`,
 and `metrics`. Nested DHCore `metrics` samples become `metric.values`, while
@@ -100,9 +124,8 @@ than inventing a time window. With both bounds provided, an empty result uses
 those bounds and contains empty values and summaries. Timestamps must be integer Unix timestamps;
 measurement and summary values must be finite numbers.
 
-This implementation does not contact DHCore, and `params` is currently ignored.
-Missing files, invalid JSON, and malformed exports raise errors rather than
-returning fabricated measurements.
+`params` is currently ignored. HTTP errors, invalid JSON, and malformed API
+responses raise errors rather than returning fabricated measurements.
 
 Install the optional test dependencies and run the conversion tests, including
 Draft 7 validation of the real fixture response:

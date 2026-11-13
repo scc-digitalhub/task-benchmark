@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 import json
+import os
+from configparser import ConfigParser
 from math import isfinite
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 from .base_metrics_manager import JSONValue, MetricsManager
 
 
+DEFAULT_RUNS_URL = (
+    "https://core.dev.atlas.fbk.eu/api/v1/-/test-hf/resource_metrics/runs"
+)
+
+
 class DHCoreMetricsManager(MetricsManager):
-    """Convert a local DHCore metrics export into the service metrics schema.
+    """Fetch and convert a DHCore run's metrics into the service metrics schema.
 
     Select entries by exact entry ID or pod, service, container, or dhcore_run
     label value. Preserve units; recalculate standard summaries when filtering.
@@ -17,9 +26,18 @@ class DHCoreMetricsManager(MetricsManager):
 
     def __init__(
         self,
-        metrics_path: str | Path = "examples/json/dh_core_metrics.json",
+        runs_url: str | None = None,
     ) -> None:
-        self.metrics_path = Path(metrics_path).expanduser()
+        configured_url = (
+            runs_url
+            if runs_url is not None
+            else os.getenv("DHCORE_RESOURCE_METRICS_RUNS_URL", DEFAULT_RUNS_URL)
+        )
+        if not isinstance(configured_url, str):
+            raise TypeError("runs_url must be a string")
+        if not configured_url.strip():
+            raise ValueError("runs_url must not be empty")
+        self.runs_url = configured_url.rstrip("/")
 
     def collect_metrics(
         self,
@@ -28,16 +46,31 @@ class DHCoreMetricsManager(MetricsManager):
         *,
         window_from: int | None = None,
         window_to: int | None = None,
+        metric_names: list[str] | None = None,
     ) -> JSONValue:
-        """Read and convert matching series; request params are currently unused."""
+        """Fetch and convert matching series, optionally filtering metric names."""
         self._validate_window(window_from, window_to)
         if not isinstance(service_id, str):
             raise TypeError("service_id must be a string")
         if not service_id.strip():
             raise ValueError("service_id must not be empty")
+        if metric_names is not None:
+            if not isinstance(metric_names, list):
+                raise TypeError("metric_names must be a list of strings or None")
+            if any(not isinstance(name, str) for name in metric_names):
+                raise TypeError("metric_names must contain only strings")
 
-        with self.metrics_path.open(encoding="utf-8") as source:
-            entries = json.load(source)
+        access_token = self._access_token()
+        url = f"{self.runs_url}/{quote(service_id, safe='')}"
+        request = Request(
+            url,
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {access_token}",
+            },
+        )
+        with urlopen(request, timeout=30) as response:
+            entries = json.load(response)
         if not isinstance(entries, list):
             raise ValueError("DHCore metrics must be a list of entries")
 
@@ -51,6 +84,8 @@ class DHCoreMetricsManager(MetricsManager):
                 continue
             matched = True
             for metric in entry["metrics"]:
+                if metric_names is not None and metric["name"] not in metric_names:
+                    continue
                 values = [
                     {
                         "timestamp": self._timestamp(point["timestamp"]),
@@ -101,6 +136,40 @@ class DHCoreMetricsManager(MetricsManager):
             "window_to": window_to if window_to is not None else max(timestamps),
             "metrics": converted,
         }
+
+    @staticmethod
+    def _access_token() -> str:
+        access_token = os.getenv("DHCORE_ACCESS_TOKEN")
+        if access_token and access_token.strip():
+            return access_token.strip()
+
+        config_path = Path.home() / ".dhcore.ini"
+        if not config_path.is_file():
+            raise RuntimeError(
+                "Set DHCORE_ACCESS_TOKEN or configure dhcore_access_token "
+                "in the active environment in ~/.dhcore.ini"
+            )
+
+        config = ConfigParser(interpolation=None)
+        if not config.read(config_path, encoding="utf-8"):
+            raise RuntimeError("Unable to read ~/.dhcore.ini")
+        active_environment = config.defaults().get("current_environment")
+        if not active_environment or not config.has_section(active_environment):
+            raise RuntimeError(
+                "The active DigitalHub environment is not configured in ~/.dhcore.ini"
+            )
+
+        access_token = config.get(
+            active_environment,
+            "dhcore_access_token",
+            fallback="",
+        )
+        if not access_token.strip():
+            raise RuntimeError(
+                "No dhcore_access_token is configured for the active "
+                "DigitalHub environment in ~/.dhcore.ini"
+            )
+        return access_token.strip()
 
     @staticmethod
     def _matches(entry: dict[str, Any], service_id: str) -> bool:

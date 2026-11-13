@@ -24,6 +24,7 @@ class MetricsManagerTests(unittest.TestCase):
         self.assertIsInstance(manager, MetricsManager)
         self.assertEqual(manager.collect_metrics("pod-1"), expected)
         self.assertEqual(manager.collect_metrics("service-2"), expected)
+        self.assertEqual(manager.collect_metrics("pod-1", metric_names=["cpu"]), expected)
         params = {"start": 1790812923, "filters": {"metric": "cpu"}}
         self.assertEqual(manager.collect_metrics("pod-1", params=params), expected)
         self.assertEqual(

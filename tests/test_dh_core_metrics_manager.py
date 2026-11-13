@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
+from contextlib import contextmanager
+from io import BytesIO
 from pathlib import Path
+from unittest.mock import patch
 
 from jsonschema import Draft7Validator
 
@@ -11,19 +15,41 @@ from task_benchmark.impl.metrics_manager import DHCoreMetricsManager, MetricsMan
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RUNS_URL = "https://core.dev.atlas.fbk.eu/api/v1/-/test-hf/resource_metrics/runs"
 
 
 class DHCoreMetricsManagerTests(unittest.TestCase):
+    @staticmethod
+    @contextmanager
+    def mock_api_response(entries):
+        response_body = json.dumps(entries).encode("utf-8")
+        with patch.dict(os.environ, {"DHCORE_ACCESS_TOKEN": "test-token"}):
+            with patch(
+                "task_benchmark.impl.metrics_manager.dh_core.urlopen",
+                side_effect=(BytesIO(response_body) for _ in range(20)),
+            ) as urlopen_mock:
+                yield urlopen_mock
+
     def test_converts_real_export(self) -> None:
         path = PROJECT_ROOT / "examples" / "json" / "dh_core_metrics.json"
         entries = json.loads(path.read_text(encoding="utf-8"))
-        pod = next(
-            label.removeprefix("pod:")
+        run_id = next(
+            label.removeprefix("dhcore_run:")
             for label in entries[0]["metadata"]["labels"]
-            if label.startswith("pod:")
+            if label.startswith("dhcore_run:")
         )
-        manager = DHCoreMetricsManager(path)
-        result = manager.collect_metrics(pod)
+        manager = DHCoreMetricsManager()
+        with patch.dict(os.environ, {"DHCORE_ACCESS_TOKEN": "test-token"}):
+            with patch(
+                "task_benchmark.impl.metrics_manager.dh_core.urlopen",
+                return_value=BytesIO(path.read_bytes()),
+            ) as urlopen_mock:
+                result = manager.collect_metrics(run_id)
+        urlopen_mock.assert_called_once()
+        request = urlopen_mock.call_args.args[0]
+        self.assertEqual(request.full_url, f"{RUNS_URL}/{run_id}")
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-token")
+        self.assertEqual(urlopen_mock.call_args.kwargs, {"timeout": 30})
 
         schema = json.loads(
             (PROJECT_ROOT / "json" / "metrics_schema.json").read_text(encoding="utf-8")
@@ -32,7 +58,7 @@ class DHCoreMetricsManagerTests(unittest.TestCase):
         Draft7Validator(schema).validate(result)
 
         self.assertIsInstance(manager, MetricsManager)
-        self.assertEqual(result["service_id"], pod)
+        self.assertEqual(result["service_id"], run_id)
         self.assertEqual(set(result), {"service_id", "window_from", "window_to", "metrics"})
         all_timestamps = []
         expected_metrics = [metric for entry in entries for metric in entry["metrics"]]
@@ -59,53 +85,100 @@ class DHCoreMetricsManagerTests(unittest.TestCase):
                 "summary": [{"name": "avg", "value": 0.3, "extra": True}],
             }],
         }
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "metrics.json"
-            other = {"id": "other", "metadata": {}, "metrics": []}
-            path.write_text(json.dumps([entry, other]), encoding="utf-8")
-            manager = DHCoreMetricsManager(path)
+        other = {"id": "other", "metadata": {}, "metrics": []}
+        manager = DHCoreMetricsManager("https://example.test/runs")
+        with self.mock_api_response([entry, other]):
             result = manager.collect_metrics("service-1")
-            self.assertEqual(result["window_from"], 10)
-            self.assertEqual(result["window_to"], 20)
-            self.assertEqual(result["metrics"][0]["summary"],
-                             [{"name": "avg", "value": 0.3}])
-            self.assertNotIn("extra", result["metrics"][0]["values"][0])
-            self.assertEqual(len(result["metrics"]), 1)
             with self.assertRaisesRegex(ValueError, "No DHCore metrics"):
                 manager.collect_metrics("unknown")
-            self.assertEqual(manager.collect_metrics("entry-1")["metrics"], result["metrics"])
+            self.assertEqual(
+                manager.collect_metrics("entry-1")["metrics"],
+                result["metrics"],
+            )
+        self.assertEqual(result["window_from"], 10)
+        self.assertEqual(result["window_to"], 20)
+        self.assertEqual(result["metrics"][0]["summary"],
+                         [{"name": "avg", "value": 0.3}])
+        self.assertNotIn("extra", result["metrics"][0]["values"][0])
+        self.assertEqual(len(result["metrics"]), 1)
+
+    def test_filters_requested_metric_names(self) -> None:
+        entries = [{"id": "service-1", "metrics": [
+            {
+                "name": "cpu",
+                "unit": "seconds",
+                "metrics": [{"timestamp": 10, "value": 0.5}],
+                "summary": [],
+            },
+            {
+                "name": "memory",
+                "unit": "bytes",
+                "metrics": [{"timestamp": 10, "value": 1024}],
+                "summary": [],
+            },
+        ]}]
+        with self.mock_api_response(entries):
+            result = DHCoreMetricsManager().collect_metrics(
+                "service-1",
+                window_from=10,
+                window_to=10,
+                metric_names=["memory"],
+            )
+        self.assertEqual([metric["name"] for metric in result["metrics"]], ["memory"])
+
+    def test_empty_metric_name_filter_returns_no_series(self) -> None:
+        entries = [{"id": "service-1", "metrics": [{
+            "name": "cpu",
+            "unit": "seconds",
+            "metrics": [{"timestamp": 10, "value": 0.5}],
+            "summary": [],
+        }]}]
+        with self.mock_api_response(entries):
+            result = DHCoreMetricsManager().collect_metrics(
+                "service-1",
+                window_from=10,
+                window_to=10,
+                metric_names=[],
+            )
+        self.assertEqual(result["metrics"], [])
+
+    def test_metric_name_filter_requires_strings(self) -> None:
+        for metric_names in ("cpu", ["cpu", 1]):
+            with self.subTest(metric_names=metric_names):
+                with self.assertRaises(TypeError):
+                    DHCoreMetricsManager().collect_metrics(
+                        "service-1",
+                        metric_names=metric_names,
+                    )
 
     def test_empty_series_do_not_invent_window(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "metrics.json"
-            path.write_text(json.dumps([{"id": "service-1", "metrics": [{
-                "name": "network", "unit": "bytes", "metrics": [], "summary": []
-            }]}]), encoding="utf-8")
+        entries = [{"id": "service-1", "metrics": [{
+            "name": "network", "unit": "bytes", "metrics": [], "summary": []
+        }]}]
+        with self.mock_api_response(entries):
             with self.assertRaisesRegex(ValueError, "without timestamps"):
-                DHCoreMetricsManager(path).collect_metrics("service-1")
+                DHCoreMetricsManager().collect_metrics("service-1")
 
     def test_invalid_values_are_rejected(self) -> None:
         for timestamp, value in [(True, 1), (10.5, 1), (10, True), (10, float("nan"))]:
             with self.subTest(timestamp=timestamp, value=value):
-                with tempfile.TemporaryDirectory() as directory:
-                    path = Path(directory) / "metrics.json"
-                    path.write_text(json.dumps([{"id": "service-1", "metrics": [{
-                        "name": "cpu", "unit": "seconds", "summary": [],
-                        "metrics": [{"timestamp": timestamp, "value": value}],
-                    }]}]), encoding="utf-8")
+                entries = [{"id": "service-1", "metrics": [{
+                    "name": "cpu", "unit": "seconds", "summary": [],
+                    "metrics": [{"timestamp": timestamp, "value": value}],
+                }]}]
+                with self.mock_api_response(entries):
                     with self.assertRaises(ValueError):
-                        DHCoreMetricsManager(path).collect_metrics("service-1")
+                        DHCoreMetricsManager().collect_metrics("service-1")
 
     def test_filters_inclusive_window_and_recomputes_summary(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "metrics.json"
-            path.write_text(json.dumps([{"id": "service-1", "metrics": [{
-                "name": "cpu", "unit": "seconds",
-                "metrics": [{"timestamp": timestamp, "value": value}
-                            for timestamp, value in [(10, 1), (20, 2), (30, 4), (40, 100)]],
-                "summary": [{"name": "sum", "value": 107}],
-            }]}]), encoding="utf-8")
-            manager = DHCoreMetricsManager(path)
+        entries = [{"id": "service-1", "metrics": [{
+            "name": "cpu", "unit": "seconds",
+            "metrics": [{"timestamp": timestamp, "value": value}
+                        for timestamp, value in [(10, 1), (20, 2), (30, 4), (40, 100)]],
+            "summary": [{"name": "sum", "value": 107}],
+        }]}]
+        with self.mock_api_response(entries):
+            manager = DHCoreMetricsManager()
             result = manager.collect_metrics("service-1", window_from=20, window_to=30)
             metric = result["metrics"][0]
             self.assertEqual([point["timestamp"] for point in metric["values"]], [20, 30])
@@ -127,6 +200,67 @@ class DHCoreMetricsManagerTests(unittest.TestCase):
             schema = json.loads((PROJECT_ROOT / "json" / "metrics_schema.json").read_text())
             Draft7Validator(schema).validate(result)
             Draft7Validator(schema).validate(empty)
+
+    def test_builds_encoded_run_url_from_custom_prefix(self) -> None:
+        entries = [{"id": "run/42", "metrics": [{
+            "name": "cpu",
+            "unit": "seconds",
+            "metrics": [{"timestamp": 10, "value": 0.5}],
+            "summary": [],
+        }]}]
+        manager = DHCoreMetricsManager("https://example.test/api/runs/")
+        with self.mock_api_response(entries) as urlopen_mock:
+            manager.collect_metrics("run/42")
+        request = urlopen_mock.call_args.args[0]
+        self.assertEqual(request.full_url, "https://example.test/api/runs/run%2F42")
+
+    def test_requires_token_before_making_request(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(os.environ, {"DHCORE_ACCESS_TOKEN": ""}):
+                with patch(
+                    "task_benchmark.impl.metrics_manager.dh_core.Path.home",
+                    return_value=Path(directory),
+                ):
+                    with patch(
+                        "task_benchmark.impl.metrics_manager.dh_core.urlopen"
+                    ) as urlopen_mock:
+                        with self.assertRaisesRegex(RuntimeError, "DHCORE_ACCESS_TOKEN"):
+                            DHCoreMetricsManager().collect_metrics("run-1")
+        urlopen_mock.assert_not_called()
+
+    def test_reads_token_from_active_dhcore_ini_when_env_is_missing(self) -> None:
+        entries = [{"id": "run-1", "metrics": [{
+            "name": "cpu",
+            "unit": "seconds",
+            "metrics": [{"timestamp": 10, "value": 0.5}],
+            "summary": [],
+        }]}]
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / ".dhcore.ini"
+            config_path.write_text(
+                "[DEFAULT]\n"
+                "current_environment = dev\n"
+                "\n"
+                "[dev]\n"
+                "dhcore_access_token = ini-token\n"
+                "\n"
+                "[other]\n"
+                "dhcore_access_token = other-token\n",
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {"DHCORE_ACCESS_TOKEN": ""}):
+                with patch(
+                    "task_benchmark.impl.metrics_manager.dh_core.Path.home",
+                    return_value=Path(directory),
+                ):
+                    with patch(
+                        "task_benchmark.impl.metrics_manager.dh_core.urlopen",
+                        return_value=BytesIO(json.dumps(entries).encode("utf-8")),
+                    ) as urlopen_mock:
+                        DHCoreMetricsManager().collect_metrics("run-1")
+
+        request = urlopen_mock.call_args.args[0]
+        self.assertEqual(request.get_header("Authorization"), "Bearer ini-token")
 
     def test_rejects_invalid_time_bounds(self) -> None:
         manager = DHCoreMetricsManager()
