@@ -1,0 +1,17 @@
+project: test-tvm
+function: yolo26n-cls
+model: store://test-yolo/model/onnx/yolo26n-cls:udtdcjaziu1859bmwj9z46l
+served_name: yolo26n-cls
+targets:
+  - target_architecture: arm64
+    compile-resources:
+      cpu: 1
+      mem: 2Gi
+      disk: 2Gi  
+nodes:
+  - target_architecture: arm64
+    profile: jetson-orin
+    run-resources:
+      cpu: 1
+      mem: 512Mi
+      disk: 1Gi

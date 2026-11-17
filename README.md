@@ -169,6 +169,9 @@ The example contains a `@handler` entrypoint that:
 - runs `evaluate(...)`
 - logs the evaluation report artifact
 
+For programmatic deployment of a service run across multiple profiles, see
+[`docs/deploy-managers.md`](docs/deploy-managers.md).
+
 ## License
 
 Apache-2.0

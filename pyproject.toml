@@ -22,6 +22,7 @@ dependencies = [
 [project.optional-dependencies]
 digitalhub = [
 	"digitalhub-runtime-python",
+	"digitalhub-runtime-tvm",
 ]
 huggingface = [
 	"datasets",
