@@ -87,7 +87,7 @@ class DHCoreDeployManager:
             raise ValueError("The source run has an invalid function reference")
         return function_name, function_version
 
-    def deployTVM(self, yml_file: str | Path) -> list[str]:
+    def deployTVM(self, yml_file: str | Path) -> list[tuple[str, str, str]]:
         """Build, compile, and serve a TVM model using the supplied YAML plan."""
         yml_path = Path(yml_file).expanduser()
         with yml_path.open(encoding="utf-8") as source:
@@ -99,6 +99,7 @@ class DHCoreDeployManager:
         function_name = self._required_text(config, "function")
         model = self._required_text(config, "model")
         served_name = self._required_text(config, "served_name")
+        build_resources = self._resource_mapping(config, "build-resources")
         targets = self._required_list(config, "targets")
         nodes = self._required_list(config, "nodes")
 
@@ -111,7 +112,13 @@ class DHCoreDeployManager:
             model=model,
         )
 
-        main_func.run("build", wait=True, log_info=False)
+        build_run = main_func.run(
+            "build",
+            resources=build_resources,
+            wait=True,
+            log_info=False,
+        )
+        self._raise_if_run_failed(build_run, "build")
 
         so_models: dict[str, str] = {}
         for target in targets:
@@ -122,7 +129,8 @@ class DHCoreDeployManager:
                 raise ValueError(f"Duplicate TVM target architecture '{architecture}'")
             resources = self._resource_mapping(
                 target,
-                "compile-resources"
+                "compile-resources",
+                "complile-resources",
             )
             compile_run = main_func.run(
                 "compile",
@@ -132,9 +140,10 @@ class DHCoreDeployManager:
                 wait=True,
                 log_info=False,
             )
+            self._raise_if_run_failed(compile_run, f"compile ({architecture})")
             so_model = self._compiled_model_reference(compile_run)
             if not so_model:
-                so_model = self._model_reference(compile_run.spec)
+                so_model = self._model_reference(getattr(compile_run, "spec", None))
             if not so_model:
                 main_func.refresh()
                 so_model = self._model_reference(main_func.spec)
@@ -144,11 +153,12 @@ class DHCoreDeployManager:
                 )
             so_models[architecture] = so_model
 
-        service_urls: list[str] = []
+        deployments: list[tuple[str, str, str]] = []
         for node in nodes:
             if not isinstance(node, dict):
                 raise ValueError("Each TVM node must be a mapping")
             architecture = self._required_text(node, "target_architecture")
+            profile = self._required_text(node, "profile")
             try:
                 model_path = so_models[architecture]
             except KeyError as exc:
@@ -160,12 +170,16 @@ class DHCoreDeployManager:
                 raise ValueError("TVM node served_name must be a non-empty string")
             service_run = main_func.run(
                 "serve",
-                profile=self._required_text(node, "profile"),
+                profile=profile,
                 served_name=node_served_name.strip(),
                 model_path=model_path,
                 resources=self._resource_mapping(node, "run-resources"),
                 wait=True,
                 log_info=False,
+            )
+            self._raise_if_run_failed(
+                service_run,
+                f"serve ({profile}, {architecture})",
             )
             service = getattr(service_run.status, "service", None)
             service_url = service.get("url") if isinstance(service, Mapping) else None
@@ -174,9 +188,30 @@ class DHCoreDeployManager:
                     f"TVM service for target architecture '{architecture}' "
                     "did not expose a service URL"
                 )
-            service_urls.append(service_url.strip())
+            deployments.append((profile, architecture, service_url.strip()))
 
-        return service_urls
+        return deployments
+
+    @staticmethod
+    def _raise_if_run_failed(run: Any, action: str) -> None:
+        refresh = getattr(run, "refresh", None)
+        if not callable(refresh):
+            raise RuntimeError(f"Cannot refresh DigitalHub {action} run status")
+        refresh()
+
+        status = getattr(run, "status", None)
+        state = getattr(status, "state", None)
+        state = getattr(state, "value", state)
+        if state is None:
+            raise RuntimeError(f"Cannot determine DigitalHub {action} run state")
+        if str(state).upper() == "ERROR":
+            message = getattr(status, "message", None)
+            run_id = getattr(run, "id", None)
+            run_reference = f" {run_id}" if run_id else ""
+            detail = f": {message}" if isinstance(message, str) and message else ""
+            raise RuntimeError(
+                f"DigitalHub {action} run{run_reference} failed with state ERROR{detail}"
+            )
 
     @staticmethod
     def _required_text(data: dict[str, Any], key: str) -> str:
@@ -222,15 +257,15 @@ class DHCoreDeployManager:
     @staticmethod
     def _model_reference(data: Any) -> str | None:
         if isinstance(data, Mapping):
-            model_reference = data.get("model_path")
+            model_reference = data.get("so_model")
         else:
-            model_reference = getattr(data, "model_path", None)
+            model_reference = getattr(data, "so_model", None)
             if not isinstance(model_reference, str):
                 to_dict = getattr(data, "to_dict", None)
                 if callable(to_dict):
                     model_data = to_dict()
                     if isinstance(model_data, Mapping):
-                        model_reference = model_data.get("model_path")
+                        model_reference = model_data.get("so_model")
         if isinstance(model_reference, str) and model_reference.strip():
             return model_reference.strip()
         return None

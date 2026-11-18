@@ -35,10 +35,12 @@ propagated to the caller.
 
 `deployTVM(yml_file)` reads a TVM deployment plan, loads its `project`, and
 creates the configured `tvm` Function from the YAML `function` name and `model`
-reference using ONNX format. It runs the build action once, compiles each
+reference using ONNX format. It runs the build action once with `build-resources`,
+compiles each
 `targets` entry with its `target_architecture`, matching `tag`, and compile
 resources, then serves each `nodes` entry with its profile, model reference,
-served name, and run resources. It returns service URLs in the order of `nodes`.
+served name, and run resources. It returns a list of
+`(profile, target_architecture, service_url)` tuples in the order of `nodes`.
 
 The compile-resource key may be spelled `compile-resources` or
 `complile-resources` (the spelling used in `yml/dh_tvm.yml`). The compile run's
@@ -52,9 +54,10 @@ Install the SDK and TVM runtime plugin with
 ```python
 from task_benchmark.impl.deploy_manager import DHCoreDeployManager
 
-service_urls = DHCoreDeployManager().deployTVM("yml/dh_tvm.yml")
+deployments = DHCoreDeployManager().deployTVM("yml/dh_tvm.yml")
 ```
 
 The method waits for build and compile completion and for each service run to
-expose its URL. Failures from the SDK/Core are propagated; missing compiled
+expose its URL. It refreshes each run's state and raises `RuntimeError` if the
+state is `ERROR`. Failures from the SDK/Core are propagated; missing compiled
 models or service URLs raise explicit errors.

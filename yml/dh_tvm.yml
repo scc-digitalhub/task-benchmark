@@ -2,6 +2,10 @@ project: test-tvm
 function: yolo26n-cls
 model: store://test-yolo/model/onnx/yolo26n-cls:udtdcjaziu1859bmwj9z46l
 served_name: yolo26n-cls
+build-resources:
+  cpu: 1
+  mem: 2Gi
+  disk: 2Gi
 targets:
   - target_architecture: arm64
     compile-resources:

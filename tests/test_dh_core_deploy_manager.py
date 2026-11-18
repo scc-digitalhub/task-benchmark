@@ -121,6 +121,7 @@ class DHCoreDeployManagerTests(unittest.TestCase):
             "function": "yolo26n-cls",
             "model": "store://test-yolo/model/onnx/yolo26n-cls:model-id",
             "served_name": "yolo26n-cls",
+            "build-resources": {"cpu": 1, "mem": "2Gi"},
             "targets": [
                 {
                     "target_architecture": "arm64",
@@ -145,27 +146,39 @@ class DHCoreDeployManagerTests(unittest.TestCase):
                 },
             ],
         }
+        build_run = SimpleNamespace(
+            status=SimpleNamespace(state="COMPLETED"),
+            refresh=Mock(),
+        )
         compile_arm = SimpleNamespace(
-            metadata={"so_model": "store://test-tvm/model/tvm-so/yolo-arm:arm-id"}
+            metadata={"so_model": "store://test-tvm/model/tvm-so/yolo-arm:arm-id"},
+            status=SimpleNamespace(state="COMPLETED"),
+            refresh=Mock(),
         )
         compile_amd = SimpleNamespace(
             metadata=SimpleNamespace(
                 to_dict=lambda: {
                     "so_model": "store://test-tvm/model/tvm-so/yolo-amd64:amd-id"
                 }
-            )
+            ),
+            status=SimpleNamespace(state="COMPLETED"),
+            refresh=Mock(),
+        )
+        serve_arm = SimpleNamespace(
+            status=SimpleNamespace(state="RUNNING", service={"url": "http://arm64.example"}),
+            refresh=Mock(),
+        )
+        serve_amd = SimpleNamespace(
+            status=SimpleNamespace(state="RUNNING", service={"url": "http://amd64.example"}),
+            refresh=Mock(),
         )
         main_function = Mock()
         main_function.run.side_effect = [
-            SimpleNamespace(),
+            build_run,
             compile_arm,
             compile_amd,
-            SimpleNamespace(status=SimpleNamespace(
-                service={"url": "http://arm64.example"}
-            )),
-            SimpleNamespace(status=SimpleNamespace(
-                service={"url": "http://amd64.example"}
-            )),
+            serve_arm,
+            serve_amd,
         ]
         project = SimpleNamespace(name="test-tvm")
         manager = DHCoreDeployManager()
@@ -199,7 +212,11 @@ class DHCoreDeployManagerTests(unittest.TestCase):
             "serve",
             "serve",
         ])
-        self.assertEqual(calls[0].kwargs, {"wait": True, "log_info": False})
+        self.assertEqual(calls[0].kwargs, {
+            "resources": {"cpu": 1, "mem": "2Gi"},
+            "wait": True,
+            "log_info": False,
+        })
         self.assertEqual(calls[1].kwargs["target_architecture"], "arm64")
         self.assertEqual(calls[1].kwargs["tag"], "arm64")
         self.assertEqual(calls[1].kwargs["resources"], {"cpu": 1, "mem": "2Gi"})
@@ -215,9 +232,11 @@ class DHCoreDeployManagerTests(unittest.TestCase):
         )
         self.assertEqual(calls[4].kwargs["served_name"], "yolo26n-cls-amd64")
         self.assertEqual(service_urls, [
-            "http://arm64.example",
-            "http://amd64.example",
+            ("jetson-orin", "arm64", "http://arm64.example"),
+            ("cpu", "amd64", "http://amd64.example"),
         ])
+        for run in (build_run, compile_arm, compile_amd, serve_arm, serve_amd):
+            run.refresh.assert_called_once_with()
 
     def test_tvm_refreshes_function_when_compile_run_has_no_model_metadata(self) -> None:
         config = {
@@ -225,6 +244,7 @@ class DHCoreDeployManagerTests(unittest.TestCase):
             "function": "model",
             "model": "store://test-tvm/model/onnx/model:model-id",
             "served_name": "model",
+            "build-resources": {"cpu": 1},
             "targets": [{
                 "target_architecture": "arm64",
                 "complile-resources": {"cpu": 1},
@@ -235,17 +255,28 @@ class DHCoreDeployManagerTests(unittest.TestCase):
                 "run-resources": {"cpu": 1},
             }],
         }
+        build_run = SimpleNamespace(
+            status=SimpleNamespace(state="COMPLETED"),
+            refresh=Mock(),
+        )
         compile_run = SimpleNamespace(
             metadata={},
             spec=SimpleNamespace(to_dict=lambda: {}),
+            status=SimpleNamespace(state="COMPLETED"),
+            refresh=Mock(),
+        )
+        service_run = SimpleNamespace(
+            status=SimpleNamespace(
+                state="RUNNING",
+                service={"url": "http://service.example"},
+            ),
+            refresh=Mock(),
         )
         main_function = Mock()
         main_function.run.side_effect = [
-            SimpleNamespace(),
+            build_run,
             compile_run,
-            SimpleNamespace(status=SimpleNamespace(
-                service={"url": "http://service.example"}
-            )),
+            service_run,
         ]
         main_function.spec.to_dict.return_value = {
             "so_model": "store://test-tvm/model/tvm-so/model:compiled-id"
@@ -268,7 +299,50 @@ class DHCoreDeployManagerTests(unittest.TestCase):
             main_function.run.call_args_list[2].kwargs["model_path"],
             "store://test-tvm/model/tvm-so/model:compiled-id",
         )
-        self.assertEqual(service_urls, ["http://service.example"])
+        self.assertEqual(
+            service_urls,
+            [("jetson-orin", "arm64", "http://service.example")],
+        )
+        build_run.refresh.assert_called_once_with()
+        compile_run.refresh.assert_called_once_with()
+        service_run.refresh.assert_called_once_with()
+
+    def test_tvm_raises_when_build_run_is_in_error(self) -> None:
+        config = {
+            "project": "test-tvm",
+            "function": "model",
+            "model": "store://test-tvm/model/onnx/model:model-id",
+            "served_name": "model",
+            "build-resources": {"cpu": 1},
+            "targets": [],
+            "nodes": [],
+        }
+        build_run = SimpleNamespace(
+            id="build-run-id",
+            status=SimpleNamespace(state="ERROR", message="Build failed"),
+            refresh=Mock(),
+        )
+        main_function = Mock()
+        main_function.run.return_value = build_run
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "tvm.yml"
+            config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+            with (
+                patch.object(
+                    dh_core.dh,
+                    "get_project",
+                    return_value=SimpleNamespace(name="test-tvm"),
+                ),
+                patch.object(dh_core.dh, "new_function", return_value=main_function),
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    r"build run build-run-id failed with state ERROR: Build failed",
+                ):
+                    DHCoreDeployManager().deployTVM(config_path)
+
+        build_run.refresh.assert_called_once_with()
+        main_function.run.assert_called_once()
 
 
 if __name__ == "__main__":
