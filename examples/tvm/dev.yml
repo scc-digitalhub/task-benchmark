@@ -1,0 +1,26 @@
+project: test-deploy
+function: yolo26n-cls
+model: store://test-deploy/model/onnx/yolo26n-cls:uynbqn9uoqc86c54mwlza2yn
+served_name: yolo26n-cls
+build-resources:
+  cpu: 1
+  mem: 2Gi
+  disk: 2Gi
+targets:
+  - target_architecture: amd64
+    compile-resources:
+      cpu: 1
+      mem: 2Gi
+      disk: 2Gi  
+  - target_architecture: arm64
+    compile-resources:
+      cpu: 1
+      mem: 2Gi
+      disk: 2Gi
+nodes:
+  - target_architecture: amd64
+    profile: cpu
+    run-resources:
+      cpu: 1
+      mem: 512Mi
+      disk: 1Gi

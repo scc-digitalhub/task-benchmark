@@ -57,7 +57,9 @@ from task_benchmark.impl.deploy_manager import DHCoreDeployManager
 deployments = DHCoreDeployManager().deployTVM("yml/dh_tvm.yml")
 ```
 
-The method waits for build and compile completion and for each service run to
-expose its URL. It refreshes each run's state and raises `RuntimeError` if the
-state is `ERROR`. Failures from the SDK/Core are propagated; missing compiled
-models or service URLs raise explicit errors.
+The method waits for build and compile completion. It starts each service run
+without blocking, then polls its refreshed state until it reaches `RUNNING` or
+`ERROR`. `timeout_seconds` controls the per-service timeout and defaults to 30
+seconds; expiration raises `TimeoutError`. `ERROR` raises `RuntimeError`.
+Failures from the SDK/Core are propagated; missing compiled models or service
+URLs raise explicit errors.

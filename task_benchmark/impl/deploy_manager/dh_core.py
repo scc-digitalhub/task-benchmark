@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -87,8 +89,20 @@ class DHCoreDeployManager:
             raise ValueError("The source run has an invalid function reference")
         return function_name, function_version
 
-    def deployTVM(self, yml_file: str | Path) -> list[tuple[str, str, str]]:
+    def deployTVM(
+        self,
+        yml_file: str | Path,
+        timeout_seconds: float = 30.0,
+    ) -> list[tuple[str, str, str]]:
         """Build, compile, and serve a TVM model using the supplied YAML plan."""
+        if (
+            isinstance(timeout_seconds, bool)
+            or not isinstance(timeout_seconds, (int, float))
+            or not math.isfinite(timeout_seconds)
+            or timeout_seconds <= 0
+        ):
+            raise ValueError("timeout_seconds must be a positive finite number")
+
         yml_path = Path(yml_file).expanduser()
         with yml_path.open(encoding="utf-8") as source:
             config = yaml.safe_load(source)
@@ -174,12 +188,13 @@ class DHCoreDeployManager:
                 served_name=node_served_name.strip(),
                 model_path=model_path,
                 resources=self._resource_mapping(node, "run-resources"),
-                wait=True,
+                wait=False,
                 log_info=False,
             )
-            self._raise_if_run_failed(
+            self._wait_for_service_run(
                 service_run,
                 f"serve ({profile}, {architecture})",
+                timeout_seconds,
             )
             service = getattr(service_run.status, "service", None)
             service_url = service.get("url") if isinstance(service, Mapping) else None
@@ -205,13 +220,57 @@ class DHCoreDeployManager:
         if state is None:
             raise RuntimeError(f"Cannot determine DigitalHub {action} run state")
         if str(state).upper() == "ERROR":
-            message = getattr(status, "message", None)
-            run_id = getattr(run, "id", None)
-            run_reference = f" {run_id}" if run_id else ""
-            detail = f": {message}" if isinstance(message, str) and message else ""
-            raise RuntimeError(
-                f"DigitalHub {action} run{run_reference} failed with state ERROR{detail}"
-            )
+            DHCoreDeployManager._raise_run_error(run, action, "ERROR")
+
+    @staticmethod
+    def _wait_for_service_run(run: Any, action: str, timeout_seconds: float) -> None:
+        refresh = getattr(run, "refresh", None)
+        if not callable(refresh):
+            raise RuntimeError(f"Cannot refresh DigitalHub {action} run status")
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Timed out after {timeout_seconds:g} seconds waiting for "
+                    f"DigitalHub {action} run to reach RUNNING"
+                )
+
+            refresh()
+            status = getattr(run, "status", None)
+            state = getattr(status, "state", None)
+            state = getattr(state, "value", state)
+            if state is None:
+                raise RuntimeError(f"Cannot determine DigitalHub {action} run state")
+            state_name = str(state).upper()
+            if state_name == "ERROR":
+                DHCoreDeployManager._raise_run_error(run, action, state_name)
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"Timed out after {timeout_seconds:g} seconds waiting for "
+                    f"DigitalHub {action} run to reach RUNNING"
+                )
+            if state_name == "RUNNING":
+                return
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Timed out after {timeout_seconds:g} seconds waiting for "
+                    f"DigitalHub {action} run to reach RUNNING"
+                )
+            time.sleep(min(1.0, remaining))
+
+    @staticmethod
+    def _raise_run_error(run: Any, action: str, state: str) -> None:
+        status = getattr(run, "status", None)
+        message = getattr(status, "message", None)
+        run_id = getattr(run, "id", None)
+        run_reference = f" {run_id}" if run_id else ""
+        detail = f": {message}" if isinstance(message, str) and message else ""
+        raise RuntimeError(
+            f"DigitalHub {action} run{run_reference} failed with state {state}{detail}"
+        )
 
     @staticmethod
     def _required_text(data: dict[str, Any], key: str) -> str:
