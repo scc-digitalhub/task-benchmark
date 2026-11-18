@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 import time
 from collections.abc import Mapping
@@ -8,6 +9,9 @@ from typing import Any
 
 import digitalhub as dh
 import yaml
+
+
+logger = logging.getLogger(__name__)
 
 
 class DHCoreDeployManager:
@@ -118,6 +122,11 @@ class DHCoreDeployManager:
         nodes = self._required_list(config, "nodes")
 
         project = dh.get_project(project_name)
+        logger.info(
+            "Creating TVM main function '%s' in project '%s'",
+            function_name,
+            project_name,
+        )
         main_func = dh.new_function(
             project=project.name,
             name=function_name,
@@ -125,7 +134,9 @@ class DHCoreDeployManager:
             format="onnx",
             model=model,
         )
+        logger.info("Created TVM main function '%s'", function_name)
 
+        logger.info("Starting TVM build for function '%s'", function_name)
         build_run = main_func.run(
             "build",
             resources=build_resources,
@@ -133,6 +144,7 @@ class DHCoreDeployManager:
             log_info=False,
         )
         self._raise_if_run_failed(build_run, "build")
+        logger.info("TVM build completed for function '%s'", function_name)
 
         so_models: dict[str, str] = {}
         for target in targets:
@@ -146,6 +158,7 @@ class DHCoreDeployManager:
                 "compile-resources",
                 "complile-resources",
             )
+            logger.info("Starting TVM compile for target '%s'", architecture)
             compile_run = main_func.run(
                 "compile",
                 target_architecture=architecture,
@@ -166,6 +179,11 @@ class DHCoreDeployManager:
                     f"TVM compile run for '{architecture}' did not produce so_model metadata"
                 )
             so_models[architecture] = so_model
+            logger.info(
+                "TVM compile completed for target '%s'; model: %s",
+                architecture,
+                so_model,
+            )
 
         deployments: list[tuple[str, str, str]] = []
         for node in nodes:
@@ -182,6 +200,12 @@ class DHCoreDeployManager:
             node_served_name = node.get("served_name", served_name)
             if not isinstance(node_served_name, str) or not node_served_name.strip():
                 raise ValueError("TVM node served_name must be a non-empty string")
+            logger.info(
+                "Starting TVM serve for profile '%s', target '%s', model '%s'",
+                profile,
+                architecture,
+                node_served_name.strip(),
+            )
             service_run = main_func.run(
                 "serve",
                 profile=profile,
@@ -204,6 +228,12 @@ class DHCoreDeployManager:
                     "did not expose a service URL"
                 )
             deployments.append((profile, architecture, service_url.strip()))
+            logger.info(
+                "TVM service is running for profile '%s', target '%s': %s",
+                profile,
+                architecture,
+                service_url.strip(),
+            )
 
         return deployments
 
