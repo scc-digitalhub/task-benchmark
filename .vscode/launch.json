@@ -27,6 +27,20 @@
             }
         },
         {
+            "name": "Benchmark TVM models",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/tvm/benchmark_dh_tvm.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "OPEN_INFERENCE_LOCAL_PORT": "8000",
+                "OPEN_INFERENCE_USE_PORT_FORWARD": "true",
+                "DHCLI_HOME": "C:/Users/palan/Documents/Tools/dhcli"
+            }
+        },
+        {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
