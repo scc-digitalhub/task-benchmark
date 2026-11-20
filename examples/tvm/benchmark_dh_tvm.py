@@ -35,6 +35,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
+logger = logging.getLogger(__name__)
 
 
 def save_metrics(metrics: dict[str, Any]) -> Path:
@@ -140,21 +141,30 @@ def merge_dhcore_metrics(
     if not isinstance(benchmark_series, list):
         raise ValueError("Benchmark metrics must contain a metrics list")
 
-    dhcore_metrics = DHCoreMetricsManager().collect_metrics(
-        run_id,
-        window_from=window_from,
-        window_to=window_to,
-        metric_names=metric_names
-    )
-    if not isinstance(dhcore_metrics, dict):
-        raise ValueError("DHCore metrics response must be an object")
-    dhcore_series = dhcore_metrics.get("metrics")
-    if not isinstance(dhcore_series, list):
-        raise ValueError("DHCore metrics response must contain a metrics list")
+    try:
+        dhcore_metrics = DHCoreMetricsManager().collect_metrics(
+            run_id,
+            window_from=window_from,
+            window_to=window_to,
+            metric_names=metric_names
+        )
+        if not isinstance(dhcore_metrics, dict):
+            raise ValueError("DHCore metrics response must be an object")
+        dhcore_series = dhcore_metrics.get("metrics")
+        if not isinstance(dhcore_series, list):
+            raise ValueError("DHCore metrics response must contain a metrics list")
 
-    combined_metrics = dict(benchmark_metrics)
-    combined_metrics["metrics"] = [*benchmark_series, *dhcore_series]
-    return combined_metrics
+        combined_metrics = dict(benchmark_metrics)
+        combined_metrics["metrics"] = [*benchmark_series, *dhcore_series]
+        return combined_metrics
+    except Exception as exc:
+        logger.warning(
+            "Could not merge DHCore metrics for run '%s'; "
+            "returning benchmark metrics only: %s",
+            run_id,
+            exc,
+        )
+        return dict(benchmark_metrics)
 
 
 def benchmark_service(
@@ -220,7 +230,7 @@ def benchmark_service(
                 metrics["profile"] = profile
                 metrics["target_architecture"] = target_architecture
                 metrics["run_id"] = run_id
-                print(json.dumps(metrics, indent=2))
+                #print(json.dumps(metrics, indent=2))
                 metrics_path = save_metrics(metrics)
                 print(f"Metrics saved to: {metrics_path}")
                 return metrics_path
@@ -293,7 +303,7 @@ def main() -> None:
     max_samples = int(os.getenv("IMAGENET10_MAX_SAMPLES", "12"))
     if max_samples < 1:
         raise ValueError("IMAGENET10_MAX_SAMPLES must be greater than zero")
-    local_port = int(os.getenv("OPEN_INFERENCE_LOCAL_PORT", "8080"))
+    local_port = int(os.getenv("OPEN_INFERENCE_LOCAL_PORT", "8000"))
     use_port_forward = _environment_flag(
         "OPEN_INFERENCE_USE_PORT_FORWARD",
         default=True,

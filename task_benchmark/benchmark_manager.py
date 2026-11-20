@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any, Generic, TypeVar, cast
 
@@ -11,6 +12,8 @@ from task_benchmark.impl.metrics_manager.base_metrics_manager import JSONValue
 
 InputT = TypeVar("InputT")
 OutputT = TypeVar("OutputT")
+
+logger = logging.getLogger(__name__)
 
 
 class BenchmarkManager(Generic[InputT, OutputT]):
@@ -38,6 +41,7 @@ class BenchmarkManager(Generic[InputT, OutputT]):
 
     def run_benchmark(self) -> JSONValue:
         """Run the full dataset and return metrics in the metrics-schema format."""
+        logger.info("Starting benchmark for service '%s'", self.service_id)
         window_from = int(time.time())
         inference_values: list[dict[str, int | float]] = []
         quality_score_values: list[dict[str, int | float]] = []
@@ -58,9 +62,11 @@ class BenchmarkManager(Generic[InputT, OutputT]):
                 "timestamp": evaluation_timestamp,
                 "value": quality_score,
             })
-            print(
-                f"{sample_id}: inference_time={inference_time:.9f}s, "
-                f"quality_score={quality_score:.4f}"
+            logger.info(
+                "%s: inference_time=%.9fs, quality_score=%.4f",
+                sample_id,
+                inference_time,
+                quality_score,
             )
 
         return {

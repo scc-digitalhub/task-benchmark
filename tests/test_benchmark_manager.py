@@ -61,16 +61,20 @@ class BenchmarkManagerTests(unittest.TestCase):
                 "task_benchmark.benchmark_manager.time.perf_counter",
                 side_effect=[1.0, 1.25, 2.0, 2.5],
             ),
-            patch("builtins.print") as output,
+            self.assertLogs("task_benchmark.benchmark_manager", level="INFO") as logs,
         ):
             result = manager.run_benchmark()
 
         Draft7Validator.check_schema(schema)
         Draft7Validator(schema).validate(result)
         self.assertEqual(evaluator.contexts, ["sample-1", "sample-2"])
-        self.assertEqual(output.call_args_list[0].args[0],
+        self.assertEqual(
+            logs.records[0].getMessage(),
+            "Starting benchmark for service 'service-test'",
+        )
+        self.assertEqual(logs.records[1].getMessage(),
                          "sample-1: inference_time=0.250000000s, quality_score=0.7500")
-        self.assertEqual(output.call_args_list[1].args[0],
+        self.assertEqual(logs.records[2].getMessage(),
                          "sample-2: inference_time=0.500000000s, quality_score=0.5000")
         self.assertEqual((result["window_from"], result["window_to"]), (1000, 1005))
         self.assertEqual(

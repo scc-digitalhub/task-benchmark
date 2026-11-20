@@ -24,6 +24,63 @@ spec.loader.exec_module(example)
 
 
 class TVMBenchmarkExampleTests(unittest.TestCase):
+    def test_merge_dhcore_metrics_returns_benchmark_metrics_on_collection_error(self) -> None:
+        benchmark_metrics = {
+            "service_id": "benchmark-service",
+            "window_from": 100,
+            "window_to": 200,
+            "metrics": [{"name": "quality_score", "values": []}],
+        }
+        with (
+            patch.object(
+                example.DHCoreMetricsManager,
+                "collect_metrics",
+                side_effect=ValueError("No DHCore metrics found"),
+            ) as collect_metrics,
+            self.assertLogs("benchmark_dh_tvm", level="WARNING") as logs,
+        ):
+            result = example.merge_dhcore_metrics(
+                benchmark_metrics,
+                "run-123",
+                ["cpu", "memory"],
+            )
+
+        self.assertEqual(result, benchmark_metrics)
+        self.assertIsNot(result, benchmark_metrics)
+        collect_metrics.assert_called_once_with(
+            "run-123",
+            window_from=100,
+            window_to=200,
+            metric_names=["cpu", "memory"],
+        )
+        self.assertIn("returning benchmark metrics only", logs.output[0])
+
+    def test_merge_dhcore_metrics_returns_benchmark_metrics_on_invalid_response(self) -> None:
+        benchmark_metrics = {
+            "service_id": "benchmark-service",
+            "window_from": 100,
+            "window_to": 200,
+            "metrics": [{"name": "quality_score", "values": []}],
+        }
+        invalid_responses = [None, {"metrics": None}]
+        for invalid_response in invalid_responses:
+            with self.subTest(invalid_response=invalid_response):
+                with (
+                    patch.object(
+                        example.DHCoreMetricsManager,
+                        "collect_metrics",
+                        return_value=invalid_response,
+                    ),
+                    self.assertLogs("benchmark_dh_tvm", level="WARNING"),
+                ):
+                    result = example.merge_dhcore_metrics(
+                        benchmark_metrics,
+                        "run-123",
+                        ["cpu", "memory"],
+                    )
+
+                self.assertEqual(result, benchmark_metrics)
+
     def test_benchmarks_each_deployment_using_its_node_config(self) -> None:
         deployments = [
             ("cpu", "amd64", "https://service-a.example"),

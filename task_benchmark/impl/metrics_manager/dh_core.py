@@ -71,7 +71,6 @@ class DHCoreMetricsManager(MetricsManager):
             },
         )
         # TODO wait for the DHCore metrics to be available if necessary
-        time.sleep(5)
         with urlopen(request, timeout=30) as response:
             entries = json.load(response)
         if not isinstance(entries, list):
