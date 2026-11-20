@@ -1,21 +1,47 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
+import os
+import re
+import shutil
+import subprocess
+import tempfile
 import time
 from collections.abc import Mapping
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator, TextIO
+from urllib import error, request
+from urllib.parse import parse_qs, quote, unquote, urlsplit, urlunsplit
 
 import digitalhub as dh
 import yaml
 
-
 logger = logging.getLogger(__name__)
+
+_RUN_ID_PATTERN = re.compile(
+    r"(?i)(?<![a-z0-9])([a-z0-9]{32}|[0-9a-f]{8}-[0-9a-f]{4}-"
+    r"[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?![a-z0-9])"
+)
+_TVMSERVE_RUN_ID_PATTERN = re.compile(
+    r"(?:^|-)tvmserve-([a-z0-9]+)(?=\.)",
+    re.IGNORECASE,
+)
 
 
 class DHCoreDeployManager:
     """Create runs from a DHCore run using each requested deployment profile."""
+
+    def stop_run(self, project: str, run_id: str) -> None:
+        """Stop a DigitalHub run by project and run ID."""
+        if not isinstance(project, str) or not project.strip():
+            raise ValueError("project must be a non-empty string")
+        if not isinstance(run_id, str) or not run_id.strip():
+            raise ValueError("run_id must be a non-empty string")
+
+        dh.get_run(run_id.strip(), project=project.strip()).stop()
 
     def deploy(
         self,
@@ -92,6 +118,260 @@ class DHCoreDeployManager:
         if not function_name:
             raise ValueError("The source run has an invalid function reference")
         return function_name, function_version
+
+    @staticmethod
+    def extract_run_id(service_url: str) -> str:
+        """Extract a DigitalHub run ID embedded in a service URL."""
+        parsed_url = urlsplit(DHCoreDeployManager._add_http_scheme(service_url))
+        if not parsed_url.scheme or not parsed_url.netloc:
+            raise ValueError("Service URL must be an absolute URL")
+
+        hostname = parsed_url.hostname or ""
+        tvmserve_match = _TVMSERVE_RUN_ID_PATTERN.search(hostname)
+        if tvmserve_match:
+            return tvmserve_match.group(1)
+
+        for key, values in parse_qs(parsed_url.query).items():
+            if key.casefold() in {"run_id", "runid"} and values and values[0].strip():
+                return values[0].strip()
+
+        path_segments = [
+            unquote(segment)
+            for segment in parsed_url.path.split("/")
+            if segment
+        ]
+        for index, segment in enumerate(path_segments[:-1]):
+            if segment.casefold() in {"run", "runs"}:
+                run_id = path_segments[index + 1].strip()
+                if run_id:
+                    return run_id
+
+        components = [*hostname.split("."), *path_segments]
+        for component in components:
+            match = _RUN_ID_PATTERN.search(component)
+            if match:
+                return match.group(1)
+
+        raise ValueError(
+            "Could not extract a DigitalHub run ID from the deployed service URL"
+        )
+
+    @staticmethod
+    def open_inference_base_url(service_url: str, served_name: str) -> str:
+        """Normalize a service URL to its Open Inference model metadata URL."""
+        parsed_url = urlsplit(DHCoreDeployManager._add_http_scheme(service_url))
+        if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+            raise ValueError("Service URL must use HTTP(S) and contain a host")
+        if parsed_url.query or parsed_url.fragment:
+            raise ValueError("Service URL must not contain a query or fragment")
+        if not isinstance(served_name, str) or not served_name.strip():
+            raise ValueError("served_name must not be empty")
+
+        path = parsed_url.path.rstrip("/")
+        if path.endswith("/infer"):
+            path = path.removesuffix("/infer")
+        path_segments = [unquote(segment) for segment in path.split("/") if segment]
+        has_model_route = (
+            len(path_segments) >= 3
+            and path_segments[-3] == "v2"
+            and path_segments[-2] == "models"
+        )
+        if not has_model_route:
+            model_path = f"/v2/models/{quote(served_name, safe='')}"
+            path = f"{path}{model_path}"
+
+        return urlunsplit((parsed_url.scheme, parsed_url.netloc, path, "", ""))
+
+    @contextmanager
+    def open_inference_service(
+        self,
+        service_url: str,
+        *,
+        project: str,
+        served_name: str,
+        local_port: int = 8080,
+        use_port_forward: bool = True,
+        timeout_seconds: float = 60.0,
+    ) -> Generator[tuple[str, dict[str, Any]], None, None]:
+        """Yield an Open Inference metadata URL and its metadata, managing forwarding."""
+        if not isinstance(project, str) or not project.strip():
+            raise ValueError("project must be a non-empty string")
+        if type(use_port_forward) is not bool:
+            raise TypeError("use_port_forward must be a bool")
+        if use_port_forward and (
+            type(local_port) is not int or not 1 <= local_port <= 65535
+        ):
+            raise ValueError("local_port must be an integer between 1 and 65535")
+        if (
+            isinstance(timeout_seconds, bool)
+            or not isinstance(timeout_seconds, (int, float))
+            or not math.isfinite(timeout_seconds)
+            or timeout_seconds <= 0
+        ):
+            raise ValueError("timeout_seconds must be a positive finite number")
+
+        if use_port_forward:
+            run_id = self.extract_run_id(service_url)
+            base_url = self.open_inference_base_url(
+                f"http://localhost:{local_port}",
+                served_name,
+            )
+            with self._port_forward(project.strip(), run_id, local_port) as (
+                process,
+                output,
+            ):
+                metadata = self._wait_for_service_metadata(
+                    base_url,
+                    process,
+                    output,
+                    timeout_seconds,
+                )
+                yield base_url, metadata
+            return
+
+        base_url = self.open_inference_base_url(service_url, served_name)
+        metadata = self._get_service_metadata(base_url)
+        yield base_url, metadata
+
+    @staticmethod
+    def _add_http_scheme(service_url: str) -> str:
+        if not isinstance(service_url, str) or not service_url.strip():
+            raise ValueError("Service URL must not be empty")
+        service_url = service_url.strip()
+        if "://" in service_url:
+            return service_url
+        return f"http://{service_url}"
+
+    @staticmethod
+    def _resolve_dhcli_path() -> Path:
+        candidates: list[Path] = []
+        configured_path = os.getenv("DHCLI_PATH")
+        if configured_path:
+            candidates.append(Path(configured_path))
+        configured_home = os.getenv("DHCLI_HOME")
+        if configured_home:
+            configured_path = Path(configured_home)
+            candidates.append(
+                configured_path / "dhcli.exe"
+                if configured_path.is_dir() or configured_path.suffix == ""
+                else configured_path
+            )
+        path_command = shutil.which("dhcli")
+        if path_command:
+            candidates.append(Path(path_command))
+
+        for candidate in candidates:
+            executable = candidate / "dhcli.exe" if candidate.is_dir() else candidate
+            if executable.is_file():
+                return executable
+        raise FileNotFoundError(
+            "Could not find dhcli.exe; set DHCLI_PATH or DHCLI_HOME "
+            "or add dhcli to PATH"
+        )
+
+    @contextmanager
+    def _port_forward(
+        self,
+        project: str,
+        run_id: str,
+        local_port: int,
+    ) -> Generator[tuple[subprocess.Popen[str], TextIO], None, None]:
+        executable = self._resolve_dhcli_path()
+        command = [
+            str(executable),
+            "port-forward",
+            "-p",
+            project,
+            run_id,
+            "-l",
+            str(local_port),
+        ]
+        logger.info(
+            "Starting dhcli port-forward for project '%s', run '%s' "
+            "on local port %s",
+            project,
+            run_id,
+            local_port,
+        )
+        with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as output:
+            process = subprocess.Popen(
+                command,
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            try:
+                yield process, output
+            finally:
+                if process.poll() is None:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait()
+
+    @staticmethod
+    def _read_port_forward_output(output: TextIO) -> str:
+        output.flush()
+        output.seek(0)
+        return output.read().strip()
+
+    @staticmethod
+    def _get_service_metadata(
+        base_url: str,
+        timeout_seconds: float = 60.0,
+    ) -> dict[str, Any]:
+        with request.urlopen(base_url, timeout=timeout_seconds) as response:
+            metadata = json.load(response)
+        if not isinstance(metadata, dict):
+            raise ValueError("Open Inference metadata must be a JSON object")
+        return metadata
+
+    def _wait_for_service_metadata(
+        self,
+        base_url: str,
+        process: subprocess.Popen[str],
+        output: TextIO,
+        timeout_seconds: float,
+    ) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout_seconds
+        last_error: Exception | None = None
+        while True:
+            exit_code = process.poll()
+            if exit_code is not None:
+                details = self._read_port_forward_output(output)
+                suffix = f": {details}" if details else ""
+                raise RuntimeError(
+                    f"dhcli port-forward exited with code {exit_code}{suffix}"
+                )
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                details = self._read_port_forward_output(output)
+                suffix = f": {details}" if details else ""
+                raise TimeoutError(
+                    f"Timed out after {timeout_seconds:g} seconds waiting for "
+                    f"the port-forward at {base_url}{suffix}"
+                ) from last_error
+
+            try:
+                return self._get_service_metadata(
+                    base_url,
+                    timeout_seconds=min(2.0, remaining),
+                )
+            except error.HTTPError as exc:
+                if exc.code not in {502, 503, 504}:
+                    raise RuntimeError(
+                        f"Open Inference metadata endpoint returned HTTP {exc.code}"
+                    ) from exc
+                last_error = exc
+            except (error.URLError, TimeoutError, ConnectionError) as exc:
+                last_error = exc
+
+            remaining = deadline - time.monotonic()
+            if remaining > 0:
+                time.sleep(min(0.5, remaining))
 
     def deployTVM(
         self,

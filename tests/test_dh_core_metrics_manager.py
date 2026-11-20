@@ -19,6 +19,11 @@ RUNS_URL = "https://core.dev.atlas.fbk.eu/api/v1/-/test-hf/resource_metrics/runs
 
 
 class DHCoreMetricsManagerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        sleep_patcher = patch("task_benchmark.impl.metrics_manager.dh_core.time.sleep")
+        self.sleep_mock = sleep_patcher.start()
+        self.addCleanup(sleep_patcher.stop)
+
     @staticmethod
     @contextmanager
     def mock_api_response(entries):
@@ -29,6 +34,28 @@ class DHCoreMetricsManagerTests(unittest.TestCase):
                 side_effect=(BytesIO(response_body) for _ in range(20)),
             ) as urlopen_mock:
                 yield urlopen_mock
+
+    def test_waits_before_fetching_metrics(self) -> None:
+        entries = [{
+            "id": "run-1",
+            "metrics": [{
+                "name": "cpu",
+                "unit": "seconds",
+                "metrics": [{"timestamp": 10, "value": 0.5}],
+                "summary": [],
+            }],
+        }]
+        with self.mock_api_response(entries) as urlopen_mock:
+            def verify_wait_before_request(delay: int) -> None:
+                self.assertEqual(delay, 5)
+                urlopen_mock.assert_not_called()
+
+            self.sleep_mock.side_effect = verify_wait_before_request
+            result = DHCoreMetricsManager().collect_metrics("run-1")
+
+        self.sleep_mock.assert_called_once_with(5)
+        urlopen_mock.assert_called_once()
+        self.assertEqual(result["service_id"], "run-1")
 
     def test_converts_real_export(self) -> None:
         path = PROJECT_ROOT / "examples" / "json" / "dh_core_metrics.json"

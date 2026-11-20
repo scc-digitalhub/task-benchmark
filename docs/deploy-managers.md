@@ -63,3 +63,15 @@ without blocking, then polls its refreshed state until it reaches `RUNNING` or
 seconds; expiration raises `TimeoutError`. `ERROR` raises `RuntimeError`.
 Failures from the SDK/Core are propagated; missing compiled models or service
 URLs raise explicit errors.
+
+`stop_run(project, run_id)` retrieves a run through the DigitalHub SDK and calls
+its `stop()` method. The TVM benchmark invokes it after each benchmark, including
+when validation or inference raises an exception.
+
+Use `open_inference_service(...)` to access a deployed TVM service for
+Open Inference requests. The context manager yields `(metadata_url, metadata)`;
+with its default `use_port_forward=True`, it starts and cleans up the `dhcli`
+port-forward process for the service. Set `use_port_forward=False` when the
+service URL is directly reachable. `extract_run_id()` and
+`open_inference_base_url()` are static helpers for parsing the service URL and
+building its Open Inference metadata endpoint.

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from contextlib import nullcontext
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -12,6 +14,141 @@ import yaml
 
 
 class DHCoreDeployManagerTests(unittest.TestCase):
+    def test_stop_run_loads_run_from_project_and_stops_it(self) -> None:
+        run = Mock()
+        with patch.object(dh_core.dh, "get_run", return_value=run) as get_run:
+            DHCoreDeployManager().stop_run(" test-project ", " run-id ")
+
+        get_run.assert_called_once_with("run-id", project="test-project")
+        run.stop.assert_called_once_with()
+
+    def test_extracts_run_id_and_builds_open_inference_base_url(self) -> None:
+        run_id = "a0a4589ce2ff48a6aed1868210f14c63"
+        service_url = f"s-tvmserve-{run_id}.dev-platform:8080"
+
+        self.assertEqual(DHCoreDeployManager.extract_run_id(service_url), run_id)
+        self.assertEqual(
+            DHCoreDeployManager.open_inference_base_url(
+                service_url,
+                "yolo26n-cls",
+            ),
+            f"http://s-tvmserve-{run_id}.dev-platform:8080"
+            "/v2/models/yolo26n-cls",
+        )
+        self.assertEqual(
+            DHCoreDeployManager.open_inference_base_url(
+                "https://service.example/v2/models/model/infer",
+                "ignored-default",
+            ),
+            "https://service.example/v2/models/model",
+        )
+
+    def test_open_inference_service_directly_returns_endpoint_and_metadata(self) -> None:
+        service_url = "https://service.example"
+        metadata = {"name": "yolo26n-cls"}
+        manager = DHCoreDeployManager()
+        with (
+            patch.object(manager, "_get_service_metadata", return_value=metadata),
+            patch.object(manager, "_port_forward") as port_forward,
+        ):
+            with manager.open_inference_service(
+                service_url,
+                project="test-deploy",
+                served_name="yolo26n-cls",
+                use_port_forward=False,
+            ) as (base_url, returned_metadata):
+                self.assertEqual(base_url, "https://service.example/v2/models/yolo26n-cls")
+                self.assertIs(returned_metadata, metadata)
+
+        port_forward.assert_not_called()
+
+    def test_open_inference_service_hides_forward_process_and_yields_endpoint(self) -> None:
+        run_id = "a0a4589ce2ff48a6aed1868210f14c63"
+        service_url = f"s-tvmserve-{run_id}.dev-platform:8080"
+        process = Mock()
+        output = StringIO()
+        metadata = {"name": "yolo26n-cls"}
+        manager = DHCoreDeployManager()
+        with (
+            patch.object(
+                manager,
+                "_port_forward",
+                return_value=nullcontext((process, output)),
+            ) as port_forward,
+            patch.object(
+                manager,
+                "_wait_for_service_metadata",
+                return_value=metadata,
+            ) as wait_for_metadata,
+        ):
+            with manager.open_inference_service(
+                service_url,
+                project="test-deploy",
+                served_name="yolo26n-cls",
+                local_port=8080,
+                timeout_seconds=15,
+            ) as (base_url, returned_metadata):
+                self.assertEqual(
+                    base_url,
+                    "http://localhost:8080/v2/models/yolo26n-cls",
+                )
+                self.assertIs(returned_metadata, metadata)
+
+        port_forward.assert_called_once_with("test-deploy", run_id, 8080)
+        wait_for_metadata.assert_called_once_with(
+            "http://localhost:8080/v2/models/yolo26n-cls",
+            process,
+            output,
+            15,
+        )
+
+    def test_port_forward_starts_dhcli_and_stops_it_on_exit(self) -> None:
+        manager = DHCoreDeployManager()
+        executable = Path(r"C:\tools\dhcli.exe")
+        process = Mock()
+        process.poll.return_value = None
+
+        with (
+            patch.object(
+                manager,
+                "_resolve_dhcli_path",
+                return_value=executable,
+            ),
+            patch.object(dh_core.subprocess, "Popen", return_value=process) as popen,
+        ):
+            with manager._port_forward(
+                "test-deploy",
+                "run-id",
+                8080,
+            ):
+                pass
+
+        args, kwargs = popen.call_args
+        self.assertEqual(args[0], [
+            str(executable),
+            "port-forward",
+            "-p",
+            "test-deploy",
+            "run-id",
+            "-l",
+            "8080",
+        ])
+        self.assertIs(kwargs["stderr"], dh_core.subprocess.STDOUT)
+        process.terminate.assert_called_once_with()
+        process.wait.assert_called_once_with(timeout=5)
+
+    def test_dhcli_path_is_required_when_not_available_on_path(self) -> None:
+        manager = DHCoreDeployManager()
+        with (
+            patch.dict(dh_core.os.environ, {}, clear=True),
+            patch.object(dh_core.shutil, "which", return_value=None),
+        ):
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                "Could not find dhcli.exe",
+            ):
+                manager._resolve_dhcli_path()
+
     def test_runs_source_function_once_per_profile_and_returns_urls(self) -> None:
         source_spec = {
             "task": "python+serve://my-project/task-id",

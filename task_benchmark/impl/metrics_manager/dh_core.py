@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from configparser import ConfigParser
 from math import isfinite
 from pathlib import Path
@@ -69,6 +70,8 @@ class DHCoreMetricsManager(MetricsManager):
                 "Authorization": f"Bearer {access_token}",
             },
         )
+        # TODO wait for the DHCore metrics to be available if necessary
+        time.sleep(5)
         with urlopen(request, timeout=30) as response:
             entries = json.load(response)
         if not isinstance(entries, list):
